@@ -6,9 +6,9 @@ Current status : far away from release
 # Building
 To compile GammaEngine, you will need the following dependancies :
  * CMake
- * libjpeg (currently version 9a)
- * libpng 1.6
- * libfreetype 2
+ * libjpeg
+ * libpng
+ * libfreetype
 
 mingw32-w64 is also required to build GE on win32 OS.
 

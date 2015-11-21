@@ -1,0 +1,17 @@
+Instance::Create(3) -- Get / create handle of an Image on GPU-side
+==================================================================
+
+## SYNOPSIS
+`uint64_t ReferenceImage( Image* image )`
+
+
+## DESCRIPTION
+
+This function returns a handler to the allocated `Image` in the GPU associated with the calling `Instance`.
+If the `Image` is not in GPU memory, it is allocated by this call.
+
+The returned value is entirely dependant to the backend running under the calling `Instance`.
+
+## RETURN VALUES
+
+Returns the handler to the GPU image. This can be a simple ID or a pointer to an opaque datatype, depending on the underlying backend.

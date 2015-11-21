@@ -1,0 +1,19 @@
+Instance::Malloc(3) -- Allocate memory buffer
+=============================================
+
+## SYNOPSIS
+
+`void* Malloc( uintptr_t size, bool clear_mem = true )`
+
+
+## DESCRIPTION
+
+Allocate `size` bytes and fill the new buffer with 0x00 if `clear_mem` is true.
+Underlying system call can be platform-specific, but in most cases it will be a simple malloc()
+
+`Instance`'s allocation functions are mostly present for performance-counting and back-tracing reasons ( see `cpuRamCounter()` )
+
+
+## RETURN VALUES
+
+Returns a pointer to the allocated buffer

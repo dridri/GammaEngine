@@ -1,0 +1,15 @@
+Instance::CreateRenderer(3) -- Create a new Renderer attached to this instance
+==============================================================================
+
+## SYNOPSIS
+
+`Renderer* CreateRenderer()`
+
+
+## DESCRIPTION
+
+This function asks the underlying backend to create a new `Renderer`.
+
+## RETURN VALUES
+
+Returns a pointer to the newly created `Renderer`

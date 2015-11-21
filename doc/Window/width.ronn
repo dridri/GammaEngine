@@ -1,0 +1,15 @@
+Window::width(3) -- Retrieve the width of the window
+====================================================
+
+## SYNOPSIS
+
+`uint32_t width() const`
+
+
+## DESCRIPTION
+
+Retrieve the width of the calling `Window`, in pixels.
+
+## RETURN VALUES
+
+Returns window width in pixels

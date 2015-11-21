@@ -1,0 +1,24 @@
+Instance::Create(3) -- Create a new GE instance
+===============================================
+
+## SYNOPSIS
+
+`static Instance* Create( const char* appName, uint32_t appVersion, bool easy_instance = true, const std::string& backend_file = "" )`
+
+
+## DESCRIPTION
+
+This function asks the underlying backend to create a new instance.
+
+The backend file can be specified as a parameter, otherwise the default backend will be used.
+The default backends are the following :
+
+ * Linux : OpenGL 4.3
+ * Mac OS X : OpenGL 4.3
+ * Windows : OpenGL 4.3
+ * Android : OpenGL ES 2.0
+ * iOS : OpenGL ES 2.0
+
+## RETURN VALUES
+
+Returns a pointer to the newly created instance

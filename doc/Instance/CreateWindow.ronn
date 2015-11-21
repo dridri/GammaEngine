@@ -1,0 +1,24 @@
+Instance::CreateWindow(3) -- Create a new window
+================================================
+
+## SYNOPSIS
+
+`Window* CreateWindow( const std::string& title, int width, int height, int flags = 0 )`
+
+## DESCRIPTION
+
+This function creates and shows a new window based on the calling instance.
+
+The created window will be `width` pixels width and `height` pixels height, displaying `title` on its title bar ( or whatever is it depending on your window manager / decorator )
+
+`flags` can be :
+
+ * `Window::Resizable` : the window can be resized by the user ( depending on the window manager )
+ * `Window::Fullscreen` : the created window will try to be fullscreen ( covering task / dock bars )
+
+`width` and/or `height` can be negative value(s), it this case the maximum pixel size will be used ( in most case, the screen size will be taken ).
+Passing negative values is mainly useful when combined with the `Window::Fullscreen` flag.
+
+## RETURN VALUES
+
+Returns a pointer to the newly created window

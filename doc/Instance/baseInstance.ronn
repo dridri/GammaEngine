@@ -1,0 +1,16 @@
+Instance::baseInstance(3) -- Get the basic GE instance
+======================================================
+
+## SYNOPSIS
+
+`static Instance* baseInstance()`
+
+
+## DESCRIPTION
+
+Get the very first created `Instance`.
+Useful for calling allocation functions ( e.g. `Malloc`, `Memalign`, `Realloc`, `Free` ) when there is no accessible `Instance` in tha calling context.
+
+## RETURN VALUES
+
+Returns a pointer to the first created `Instance`

@@ -247,6 +247,18 @@ void Image::Release()
 }
 
 
+void Image::UpdateData( Instance* instance )
+{
+	if ( instance == nullptr ) {
+		instance = Instance::baseInstance();
+	}
+
+	if ( mServerRefs.find( instance ) != mServerRefs.end() ) {
+		instance->UpdateImageData( this, mServerRefs[ instance ] );
+	}
+}
+
+
 ImageLoader* Image::AddImageLoader( ImageLoader* loader )
 {
 	mImageLoaders.insert( mImageLoaders.begin(), loader );

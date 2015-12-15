@@ -42,12 +42,12 @@ public:
 
 protected:
 	virtual bool run() = 0;
+	Window* mSharedWindow;
+	uint64_t mSharedContext;
 
 private:
 	static void sThreadEntry( Thread* thiz );
 	void mThreadEntry();
-	Window* mSharedWindow;
-	uint64_t mSharedContext;
 	bool mRunning;
 	bool mIsRunning;
 	bool mFinished;

@@ -9,6 +9,8 @@ Timer::Timer()
 	, mStart( 0 )
 	, mPauseTime( 0 )
 	, mPause( 0 )
+	, mLastTime( 0 )
+	, mShift( 0 )
 {
 }
 
@@ -46,11 +48,30 @@ void Timer::Stop()
 
 uint64_t Timer::ellapsed()
 {
-	return ( Time::GetTick() - mStart ) - mPause;
+	if ( not mRunning ) {
+		return 0;
+	}
+	if ( mPaused ) {
+		return mLastTime;
+	}
+	mLastTime = ( Time::GetTick() - ( mStart + mShift ) ) - mPause;
+	return mLastTime;
 }
 
 
 bool Timer::isRunning()
 {
 	return mRunning;
+}
+
+
+bool Timer::isPaused()
+{
+	return mPaused;
+}
+
+
+void Timer::setShift( int64_t shift )
+{
+	mShift = shift;
 }

@@ -101,6 +101,24 @@ OpenGL43Renderer2D::~OpenGL43Renderer2D()
 }
 
 
+void OpenGL43Renderer2D::setDepthTestEnabled( bool en )
+{
+	// TODO
+}
+
+
+Matrix* OpenGL43Renderer2D::projectionMatrix()
+{
+	return mMatrixProjection;
+}
+
+
+Matrix* OpenGL43Renderer2D::viewMatrix()
+{
+	return mMatrixView;
+}
+
+
 int OpenGL43Renderer2D::LoadVertexShader( const void* data, size_t size )
 {
 	m2DReady = false;

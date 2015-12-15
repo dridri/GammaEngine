@@ -36,6 +36,7 @@ protected:
 	virtual bool run() {
 		mWorld->Update( 1.0f / 60.0f );
 		mTicks = Time::WaitTick( 1000 / 60, mTicks );
+		Time::GlobalSync();
 		return true;
 	}
 private:
@@ -58,7 +59,7 @@ int main( int argc, char** argv )
 
 	Object* cube = instance->LoadObject( "scene/cube.obj" );
 
-	const int cubes_side = 6;
+	const int cubes_side = 8;
 	Object* cubes[cubes_side*cubes_side*cubes_side];
 	for ( int i = 0; i < cubes_side*cubes_side*cubes_side; i++ ) {
 		cubes[i] = cube->Copy();

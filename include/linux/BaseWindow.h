@@ -20,6 +20,7 @@
 #ifndef BASEWINDOW_H
 #define BASEWINDOW_H
 
+#include <list>
 #include <string>
 #include <map>
 #include <thread>
@@ -56,6 +57,7 @@ public:
 	Vector2i& cursor();
 	Vector2i& cursorWarp();
 
+	void WaitVSync( bool en );
 	void SwapBuffersBase();
 	float fps() const;
 
@@ -71,6 +73,8 @@ protected:
 	bool mKeys[512];
 	Vector2i mCursor;
 	Vector2i mCursorWarp;
+
+	std::list< void* > mWheelEvents;
 
 	float mFps;
 	int mFpsImages;

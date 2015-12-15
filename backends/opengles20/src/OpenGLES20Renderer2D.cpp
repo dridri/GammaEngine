@@ -49,7 +49,7 @@ static const char vertices_shader_base[] = GLSL(
 	{
 		ge_Color = ge_VertexColor;
 		ge_TextureCoord = ge_VertexTexcoord.xy;
-		ge_Position = ge_ProjectionMatrix /* ge_ViewMatrix*/ * ge_ObjectMatrix * vec4(ge_VertexPosition.xy, 0.0, 1.0);
+		ge_Position = ge_ProjectionMatrix * ge_ViewMatrix * ge_ObjectMatrix * vec4(ge_VertexPosition.xy, 0.0, 1.0);
 	}
 );
 
@@ -73,6 +73,7 @@ OpenGLES20Renderer2D::OpenGLES20Renderer2D( Instance* instance, uint32_t width, 
 	, m2DReady( false )
 	, mWidth( width )
 	, mHeight( height )
+	, mDepthTestEnabled( false )
 {
 	mMatrixProjection->Orthogonal( 0.0, mWidth, mHeight, 0.0, -2049.0, 2049.0 );
 	mMatrixView->Identity();
@@ -88,6 +89,24 @@ OpenGLES20Renderer2D::OpenGLES20Renderer2D( Instance* instance, uint32_t width, 
 
 OpenGLES20Renderer2D::~OpenGLES20Renderer2D()
 {
+}
+
+
+void OpenGLES20Renderer2D::setDepthTestEnabled( bool en )
+{
+	mDepthTestEnabled = en;
+}
+
+
+Matrix* OpenGLES20Renderer2D::projectionMatrix()
+{
+	return mMatrixProjection;
+}
+
+
+Matrix* OpenGLES20Renderer2D::viewMatrix()
+{
+	return mMatrixView;
 }
 
 
@@ -147,9 +166,10 @@ void OpenGLES20Renderer2D::Prerender()
 		mWidth = mAssociatedWindow->width();
 		mHeight = mAssociatedWindow->height();
 		mMatrixProjection->Orthogonal( 0.0, mWidth, mHeight, 0.0, -2049.0, 2049.0 );
-		glUseProgram( mShader );
-		glUniformMatrix4fv( mMatrixProjectionID, 1, GL_FALSE, mMatrixProjection->constData() );
 	}
+	glUseProgram( mShader );
+	glUniformMatrix4fv( mMatrixProjectionID, 1, GL_FALSE, mMatrixProjection->constData() );
+	glUniformMatrix4fv( mMatrixViewID, 1, GL_FALSE, mMatrixView->constData() );
 }
 
 
@@ -168,7 +188,11 @@ void OpenGLES20Renderer2D::Render( Image* image, int mode, int start, int n, con
 		glEnableVertexAttribArray( 2 );
 		glEnableVertexAttribArray( 3 );
 
-		glDisable( GL_DEPTH_TEST );
+		if ( mDepthTestEnabled ) {
+			glEnable( GL_DEPTH_TEST );
+		} else {
+			glDisable( GL_DEPTH_TEST );
+		}
 	//	glDisable( GL_BLEND );
 		glEnable( GL_BLEND );
 		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
@@ -434,7 +458,7 @@ void OpenGLES20Renderer2D::DrawText( int x, int y, Font* font, uint32_t color, c
 		vertices[iBuff + 5].y = fy+height;
 // 		vertices[iBuff + 5].z = 0.0f;
 
-		vertices[iBuff + 0].color = vertices[iBuff + 1].color = vertices[iBuff + 2].color = vertices[iBuff + 3].color = vertices[iBuff + 4].color = vertices[iBuff + 5].color = 0xFFFFFFFF;
+		vertices[iBuff + 0].color = vertices[iBuff + 1].color = vertices[iBuff + 2].color = vertices[iBuff + 3].color = vertices[iBuff + 4].color = vertices[iBuff + 5].color = color;
 
 		x += font->glyph(c)->advX;
 		iBuff += 6;
@@ -576,7 +600,7 @@ void OpenGLES20Renderer2D::DrawText( int x, int y, Font* font, uint32_t color, c
 		vertices[iBuff + 5].y = fy+height;
 // 		vertices[iBuff + 5].z = 0.0f;
 
-		vertices[iBuff + 0].color = vertices[iBuff + 1].color = vertices[iBuff + 2].color = vertices[iBuff + 3].color = vertices[iBuff + 4].color = vertices[iBuff + 5].color = 0xFFFFFFFF;
+		vertices[iBuff + 0].color = vertices[iBuff + 1].color = vertices[iBuff + 2].color = vertices[iBuff + 3].color = vertices[iBuff + 4].color = vertices[iBuff + 5].color = color;
 
 		x += font->glyph(c)->advX;
 		iBuff += 6;

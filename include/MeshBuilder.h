@@ -46,6 +46,8 @@ public:
 	typedef enum {
 		None,
 		Normalize,
+		NormalizeH,
+		NormalizeV,
 	} TesselationMethod;
 
 	MeshBuilder( BaseType basetype, const Vector3f& size = Vector3f(1,1,1), int tesslevel = 0 );

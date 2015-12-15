@@ -25,6 +25,7 @@
 #include <X11/extensions/xf86vmode.h>
 #include <X11/extensions/Xrender.h>
 #include <GL/glx.h>
+#include <string.h>
 
 #include "linux/BaseWindow.h"
 #include "Window.h"
@@ -32,6 +33,7 @@
 #include "Time.h"
 #include "Input.h"
 #include "gememory.h"
+
 
 namespace GE {
 
@@ -48,6 +50,8 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 	, mFpsTimer( 0 )
 	/*, mDisplay( 0 )*/
 {
+	XInitThreads();
+
 	Window::Flags flags = static_cast<Window::Flags>( _flags );
 
 	// TODO / TBD : XFree86 screen scaling ?
@@ -58,7 +62,6 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 
 	mDisplay = XOpenDisplay( 0 );
 	mScreen = DefaultScreen( mDisplay );
-
 
 
 	GLXFBConfig *fbconfigs;
@@ -196,6 +199,13 @@ float BaseWindow::fps() const
 }
 
 
+void BaseWindow::WaitVSync( bool en )
+{
+	void (*glXSwapIntervalEXT)( Display*, GLXDrawable, int ) = ( void (*)( Display*, GLXDrawable, int ) )glXGetProcAddressARB( (const GLubyte*)"glXSwapIntervalEXT" );
+	glXSwapIntervalEXT( mDisplay, mWindow, en );
+}
+
+
 void BaseWindow::SwapBuffersBase()
 {
 	pEventThread();
@@ -215,6 +225,19 @@ void BaseWindow::SwapBuffersBase()
 			mCursor.x = mx;
 			mCursor.y = my;
 		}
+	}
+
+	if ( mWheelEvents.size() > 0 ) {
+		XButtonEvent* ev = (XButtonEvent*)mWheelEvents.front();
+		if ( ev->type >= 0 ) {
+			if ( ev->button == 4 ) {
+				mKeys[ Input::MWHEELUP ] = ( ev->type == ButtonPress );
+			}
+			if ( ev->button == 5 ) {
+				mKeys[ Input::MWHEELDOWN ] = ( ev->type == ButtonPress );
+			}
+		}
+		mWheelEvents.pop_front();
 	}
 
 	mFpsImages++;
@@ -238,8 +261,10 @@ void BaseWindow::pEventThread()
 		while ( XPending( mDisplay ) ) {
 			XNextEvent( mDisplay, &event );
 // 			if(event.type)printf("event: %d\n", event.type);
-			if ( ( event.type == ButtonPress || event.type == ButtonRelease ) && ( event.xbutton.button == Input::MWHEELUP || event.xbutton.button == Input::MWHEELDOWN ) ) {
-				// TODO
+			if ( ( event.type == ButtonPress || event.type == ButtonRelease ) && ( event.xbutton.button == 4 || event.xbutton.button == 5 ) ) {
+				XButtonEvent* ev = new XButtonEvent;
+				memcpy( ev, &event.xbutton, sizeof( XButtonEvent ) );
+				mWheelEvents.push_back( ev );
 			}
 			switch ( event.type ) {
 				case ClientMessage:
@@ -251,9 +276,9 @@ void BaseWindow::pEventThread()
 					}
 					break;
 				case ConfigureNotify:
+					mHasResized = ( ( mWidth != event.xconfigure.width ) or ( mHeight != event.xconfigure.height ) );
 					mWidth = event.xconfigure.width;
 					mHeight = event.xconfigure.height;
-					mHasResized = true;
 					break;
 				case KeymapNotify:
 					XRefreshKeyboardMapping( &event.xmapping );

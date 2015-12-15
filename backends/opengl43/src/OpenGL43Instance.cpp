@@ -96,6 +96,16 @@ void OpenGL43Instance::UnreferenceImage( uint64_t ref )
 }
 
 
+void OpenGL43Instance::UpdateImageData( Image* image, uint64_t ref )
+{
+	if ( image and ref ) {
+		uint32_t glTextureID = (uint32_t)ref;
+		glBindTexture( GL_TEXTURE_2D, glTextureID );
+		glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, image->width(), image->height(), GL_RGBA, GL_UNSIGNED_BYTE, image->data() );
+	}
+}
+
+
 void OpenGL43Instance::AffectVRAM( int64_t sz )
 {
 	mGpuRamCounter += sz;

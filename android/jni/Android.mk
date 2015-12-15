@@ -19,6 +19,7 @@ SRC += $(wildcard ../backends/opengles20/src/*.cpp)
 SRC += $(wildcard ../src/android/*.cpp)
 SRC := $(filter-out ../src/Vector.cpp, $(SRC))
 SRC := $(filter-out $(wildcard ../src/Physical*.cpp), $(SRC))
+SRC := $(filter-out $(wildcard ../src/LayeredMusic.cpp), $(SRC))
 SRC := $(filter-out $(wildcard ../src/main*.cpp), $(SRC))
 
 $(info $(SRC))

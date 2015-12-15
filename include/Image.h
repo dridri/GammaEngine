@@ -47,6 +47,8 @@ public:
 	uint32_t color() const;
 	uint64_t serverReference( Instance* instance );
 
+	void UpdateData( Instance* instance = nullptr );
+
 	void setColor( uint32_t c );
 	void Resize( uint32_t width, uint32_t height );
 	void Release();

@@ -46,6 +46,18 @@ Camera::~Camera()
 }
 
 
+const Vector3f& Camera::position()
+{
+	return mPosition;
+}
+
+
+const Vector3f& Camera::lookPoint()
+{
+	return mLookPoint;
+}
+
+
 void Camera::UpVector( const Vector3f& up )
 {
 	mUpVector = up;

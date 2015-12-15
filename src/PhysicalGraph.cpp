@@ -76,9 +76,8 @@ void PhysicalGraph::AddBody( PhysicalBody* body )
 void PhysicalGraph::Update( float ndt )
 {
 	double dt = SlowSync( ndt );
-	if ( std::abs( dt ) <= 0.0 ) {
+	if ( std::abs( dt ) == 0.0 ) {
 		return;
 	}
-// 	gDebug() << "dt : " << dt << "\n";
-	mDynamicsWorld->stepSimulation( dt, true, ndt );
+	mDynamicsWorld->stepSimulation( dt/*, true, ndt*/ );
 }

@@ -16,6 +16,8 @@ public:
 	void Stop();
 	uint64_t ellapsed();
 	bool isRunning();
+	bool isPaused();
+	void setShift( int64_t shift );
 
 protected:
 	bool mRunning;
@@ -23,6 +25,8 @@ protected:
 	uint64_t mStart;
 	uint64_t mPauseTime;
 	uint64_t mPause;
+	int64_t mLastTime;
+	int64_t mShift;
 };
 }
 

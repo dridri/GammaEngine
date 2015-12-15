@@ -130,6 +130,35 @@ void OpenGLES20Instance::UnreferenceImage( uint64_t ref )
 }
 
 
+void OpenGLES20Instance::UpdateImageData( Image* image, uint64_t ref )
+{
+	mImageReferencesMutex.lock();
+	if ( image and ref ) {
+		uint32_t glTextureID = (uint32_t)ref;
+		int textureWidth = geGetNextPower2( image->width() );
+		int textureHeight = geGetNextPower2( image->height() );
+		image->setMeta( "gles:width", textureWidth );
+		image->setMeta( "gles:height", textureHeight );
+		glBindTexture( GL_TEXTURE_2D, glTextureID );
+		if ( textureWidth != (int)image->width() or textureHeight != (int)image->height() ) {
+			uint32_t* data = (uint32_t*)Instance::baseInstance()->Malloc( textureWidth * textureHeight * sizeof( uint32_t ), false );
+			for ( uint32_t y = 0; y < image->height(); y++ ) {
+				memcpy( &data[ y * textureWidth ], &image->data()[ y * image->width() ], sizeof( uint32_t ) * image->width() );
+			}
+			glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, textureWidth, textureHeight, GL_RGBA, GL_UNSIGNED_BYTE, data );
+// 			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data );
+			Instance::baseInstance()->Free( data );
+		} else {
+			glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, image->width(), image->height(), GL_RGBA, GL_UNSIGNED_BYTE, image->data() );
+// 			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, image->width(), image->height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image->data() );
+		}
+		glBindTexture( GL_TEXTURE_2D, 0 );
+		glFlush();
+	}
+	mImageReferencesMutex.unlock();
+}
+
+
 void OpenGLES20Instance::AffectVRAM( int64_t sz )
 {
 	mGpuRamCounter += sz;

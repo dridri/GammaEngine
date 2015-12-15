@@ -150,7 +150,7 @@ uint64_t OpenGLES20Window::CreateSharedContext()
 #ifdef GE_WIN32
 	return 0;
 #elif defined(GE_LINUX)
-	return 0;
+	return (uint64_t)glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, (GLXContext)mEGLContext, true );
 #elif defined(GE_ANDROID)
 	return 0;
 #elif defined(GE_IOS)
@@ -163,6 +163,8 @@ void OpenGLES20Window::BindSharedContext( uint64_t ctx )
 {
 #ifdef GE_WIN32
 #elif defined(GE_LINUX)
+	int ret = glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>((void*)ctx) );
+	gDebug() << "glXMakeCurrent returned : " << ret << "\n";
 #elif defined(GE_ANDROID)
 #elif defined(GE_IOS)
 #endif

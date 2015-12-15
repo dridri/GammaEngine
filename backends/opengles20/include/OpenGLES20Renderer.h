@@ -87,6 +87,7 @@ protected:
 	Matrix* mMatrixProjection;
 	Matrix* mMatrixView;
 	float* mMatrixObjects;
+	uint32_t mMatrixObjectsSize;
 	std::vector< Object* > mObjects;
 	std::vector< Light* > mLights;
 

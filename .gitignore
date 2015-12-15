@@ -1,2 +1,3 @@
 build
-*.kdev4
+scene
+*.kdev4*

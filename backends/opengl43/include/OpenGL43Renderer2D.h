@@ -32,6 +32,10 @@ public:
 	OpenGL43Renderer2D( Instance* instance, uint32_t width, uint32_t height );
 	~OpenGL43Renderer2D();
 
+	virtual void setDepthTestEnabled( bool en );
+	virtual Matrix* projectionMatrix();
+	virtual Matrix* viewMatrix();
+
 	virtual int LoadVertexShader( const std::string& file );
 	virtual int LoadVertexShader( const void* data, size_t size );
 	virtual int LoadFragmentShader( const std::string& file );

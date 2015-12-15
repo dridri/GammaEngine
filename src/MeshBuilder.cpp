@@ -42,6 +42,35 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 			Tesselate( None );
 		}
 	}
+
+	if ( basetype == Cube ) {
+		const Vector3f cube[8] = {
+			{ -0.5f, -0.5f, -0.5f },
+			{ +0.5f, -0.5f, -0.5f },
+			{ +0.5f, +0.5f, -0.5f },
+			{ -0.5f, +0.5f, -0.5f },
+			{ -0.5f, -0.5f, +0.5f },
+			{ +0.5f, -0.5f, +0.5f },
+			{ +0.5f, +0.5f, +0.5f },
+			{ -0.5f, +0.5f, +0.5f },
+		};
+		mFaces.emplace_back( Face( cube[0], cube[2], cube[1] ) );
+		mFaces.emplace_back( Face( cube[0], cube[3], cube[2] ) );
+		mFaces.emplace_back( Face( cube[1], cube[2], cube[6] ) );
+		mFaces.emplace_back( Face( cube[6], cube[5], cube[1] ) );
+		mFaces.emplace_back( Face( cube[4], cube[5], cube[6] ) );
+		mFaces.emplace_back( Face( cube[6], cube[7], cube[4] ) );
+		mFaces.emplace_back( Face( cube[2], cube[3], cube[6] ) );
+		mFaces.emplace_back( Face( cube[6], cube[3], cube[7] ) );
+		mFaces.emplace_back( Face( cube[0], cube[7], cube[3] ) );
+		mFaces.emplace_back( Face( cube[0], cube[4], cube[7] ) );
+		mFaces.emplace_back( Face( cube[0], cube[1], cube[5] ) );
+		mFaces.emplace_back( Face( cube[0], cube[5], cube[4] ) );
+		for ( int i = 0; i < tesslevel; i++ ) {
+			Tesselate( None );
+		}
+	}
+
 	if ( basetype == Sphere ) {
 		const Vector3f icosahedron[12] = {
 			{  1.618033, 1.0, 0.0 }, // 0
@@ -81,19 +110,44 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 			Vector3f p0 = mFaces[i].p0();
 			Vector3f p1 = mFaces[i].p1();
 			Vector3f p2 = mFaces[i].p2();
-			p0.x *= size.x;
-			p0.y *= size.y;
-			p0.z *= size.z;
-			p1.x *= size.x;
-			p1.y *= size.y;
-			p1.z *= size.z;
-			p2.x *= size.x;
-			p2.y *= size.y;
-			p2.z *= size.z;
+			p0.x *= size.x * 0.5f;
+			p0.y *= size.y * 0.5f;
+			p0.z *= size.z * 0.5f;
+			p1.x *= size.x * 0.5f;
+			p1.y *= size.y * 0.5f;
+			p1.z *= size.z * 0.5f;
+			p2.x *= size.x * 0.5f;
+			p2.y *= size.y * 0.5f;
+			p2.z *= size.z * 0.5f;
 			mFaces[i] = Face( p0, p1, p2 );
 		}
 		for ( int i = 0; i < tesslevel; i++ ) {
 			Tesselate( Normalize );
+		}
+	}
+
+	if ( basetype == Cylinder ) {
+		const Vector3f prism[6] = {
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), -0.5f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), -0.5f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), -0.5f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f },
+		};
+		mFaces.emplace_back( Face( prism[0], prism[2], prism[1] ) ); // bot
+		mFaces.emplace_back( Face( prism[3], prism[4], prism[5] ) ); // top
+		
+		mFaces.emplace_back( Face( prism[0], prism[1], prism[3] ) );
+		mFaces.emplace_back( Face( prism[1], prism[4], prism[3] ) );
+		
+		mFaces.emplace_back( Face( prism[1], prism[2], prism[4] ) );
+		mFaces.emplace_back( Face( prism[2], prism[5], prism[4] ) );
+		
+		mFaces.emplace_back( Face( prism[2], prism[3], prism[5] ) );
+		mFaces.emplace_back( Face( prism[0], prism[3], prism[2] ) );
+		for ( int i = 0; i < 2 + tesslevel; i++ ) {
+			Tesselate( NormalizeH );
 		}
 	}
 }
@@ -135,6 +189,20 @@ void MeshBuilder::Tesselate( MeshBuilder::TesselationMethod method )
 			p02.x *= mSize.x;
 			p02.y *= mSize.y;
 			p02.z *= mSize.z;
+		}
+		if ( method == NormalizeH ) {
+			Vector2f p01_2d = p01.xy();
+			Vector2f p12_2d = p12.xy();
+			Vector2f p02_2d = p02.xy();
+			p01_2d.normalize();
+			p12_2d.normalize();
+			p02_2d.normalize();
+			p01.x = p01_2d.x * mSize.x * 0.5f;
+			p01.y = p01_2d.y * mSize.y * 0.5f;
+			p12.x = p12_2d.x * mSize.x * 0.5f;
+			p12.y = p12_2d.y * mSize.y * 0.5f;
+			p02.x = p02_2d.x * mSize.x * 0.5f;
+			p02.y = p02_2d.y * mSize.y * 0.5f;
 		}
 		newFaces.emplace_back( Face( p0, p01, p02 ) );
 		newFaces.emplace_back( Face( p01, p1, p12 ) );
@@ -229,7 +297,7 @@ void MeshBuilder::GenerateIndexedVertexArray( Instance* instance, Vertex** pVert
 	for ( size_t i = 0; i < mFaces.size(); i++ )
 	{
 		Vector3f normal = Vector3f();
-		if ( mBaseType == Plane ) {
+		if ( mBaseType == Plane or mBaseType == Cube or mBaseType == Cylinder ) {
 			normal = ( mFaces[i].p1() - mFaces[i].p0() ) ^ ( mFaces[i].p2() - mFaces[i].p0() );
 		}
 		normal.normalize();
@@ -243,9 +311,30 @@ void MeshBuilder::GenerateIndexedVertexArray( Instance* instance, Vertex** pVert
 
 		for ( int j = start; j != end + incr; j += incr ) {
 			Vertex vertex = Vertex( mFaces[i].p( j ) );
-			vertex.nx = normal.x;
-			vertex.ny = normal.y;
-			vertex.nz = normal.z;
+
+			if ( mBaseType == Sphere ) {
+				Vector3f dir = Vector3f( vertex.x, vertex.y, vertex.z );
+				dir.normalize();
+				vertex.nx = dir.x;
+				vertex.ny = dir.y;
+				vertex.nz = dir.z;
+			} else if ( mBaseType == Cylinder ) {
+				if ( mFaces[i].p0().z == mFaces[i].p1().z and mFaces[i].p0().z == mFaces[i].p2().z ) {
+					vertex.nx = normal.x;
+					vertex.ny = normal.y;
+					vertex.nz = normal.z;
+				} else {
+					Vector2f dir = Vector2f( vertex.x, vertex.y );
+					dir.normalize();
+					vertex.nx = dir.x;
+					vertex.ny = dir.y;
+					vertex.nz = 0.0f;
+				}
+			} else {
+				vertex.nx = normal.x;
+				vertex.ny = normal.y;
+				vertex.nz = normal.z;
+			}
 
 			uint32_t idx = 0;
 			if ( elements.find( vertex ) != elements.end() ) {
@@ -259,40 +348,6 @@ void MeshBuilder::GenerateIndexedVertexArray( Instance* instance, Vertex** pVert
 		}
 	}
 
-/*
-	std::vector< Vertex > vertices;
-	std::vector< uint32_t > indices;
-
-	for ( size_t i = 0; i < mFaces.size(); i++ ) {
-		Vector3f normal = Vector3f();
-		if ( mBaseType == Plane ) {
-			normal = ( mFaces[i].p1() - mFaces[i].p0() ) ^ ( mFaces[i].p2() - mFaces[i].p0() );
-		}
-		normal.normalize();
-		if ( invert_faces ) {
-			normal = -normal;
-		}
-		for ( size_t j = 0; j < 3; j++ ) {
-			Vertex vertex = Vertex( mFaces[i].p( invert_faces * ( 2 - j ) + !invert_faces * j ) );
-			vertex.nx = normal.x;
-			vertex.ny = normal.y;
-			vertex.nz = normal.z;
-
-			int64_t idx = -1;
-			for ( size_t k = 0; k < vertices.size(); k++ ) {
-				if ( vertices[k] == vertex ) {
-					idx = k;
-					break;
-				}
-			}
-			if ( idx < 0 ) {
-				idx = vertices.size();
-				vertices.emplace_back( vertex );
-			}
-			indices.emplace_back( idx );
-		}
-	}
-*/
 	*pVertices = (Vertex*)instance->Malloc( sizeof(Vertex) * vertices.size() );
 	*pIndices = (uint32_t*)instance->Malloc( sizeof(uint32_t) * indices.size() );
 	memcpy( *pVertices, vertices.data(), sizeof(Vertex) * vertices.size() );

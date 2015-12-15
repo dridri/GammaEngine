@@ -48,14 +48,31 @@ Matrix::~Matrix()
 
 void Matrix::setDataPointer( float* d, bool keep_current_data )
 {
-	if ( keep_current_data ) {
-		memcpy( d, m, sizeof(float) * 16 );
+	if ( d ) {
+		if ( keep_current_data ) {
+			memcpy( d, m, sizeof(float) * 16 );
+		}
+		if ( mAllocedData ) {
+			Instance::baseInstance()->Free( m );
+			mAllocedData = false;
+		}
+		m = d;
+	} else {
+		if ( !mAllocedData ) {
+			float* m2 = (float*)Instance::baseInstance()->Malloc( sizeof(float) * 16 );
+			if ( keep_current_data ) {
+				memcpy( m2, m, sizeof(float) * 16 );
+			} else {
+				memset( m2, 0, sizeof(float) * 16 );
+				m2[0] = 1.0f;
+				m2[5] = 1.0f;
+				m2[10] = 1.0f;
+				m2[15] = 1.0f;
+			}
+			m = m2;
+			mAllocedData = true;
+		}
 	}
-	if ( mAllocedData ) {
-		Instance::baseInstance()->Free( m );
-		mAllocedData = false;
-	}
-	m = d;
 }
 
 

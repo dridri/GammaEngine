@@ -37,6 +37,10 @@ public:
 	OpenGLES20Renderer2D( Instance* instance, uint32_t width, uint32_t height );
 	~OpenGLES20Renderer2D();
 
+	virtual void setDepthTestEnabled( bool en );
+	virtual Matrix* projectionMatrix();
+	virtual Matrix* viewMatrix();
+
 	virtual int LoadVertexShader( const std::string& file );
 	virtual int LoadVertexShader( const void* data, size_t size );
 	virtual int LoadFragmentShader( const std::string& file );
@@ -66,6 +70,7 @@ protected:
 	uint32_t mWidth;
 	uint32_t mHeight;
 	Image* mTextureWhite;
+	bool mDepthTestEnabled;
 };
 
 #endif // OPENGLES20RENDERER2D_H

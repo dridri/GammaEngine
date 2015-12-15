@@ -17,7 +17,7 @@ public:
 	void setMeta( const std::string& name, const float v );
 	void setMeta( const std::string& name, const std::string& v );
 
-private:
+protected:
 	std::map< std::string, std::string > mMeta;
 };
 

@@ -82,6 +82,7 @@ OpenGLES20Renderer::OpenGLES20Renderer( Instance* instance )
 	: mReady( false )
 	, mInstance( instance ? instance : Instance::baseInstance() )
 	, mMatrixObjects( 0 )
+	, mMatrixObjectsSize( 0 )
 	, mRenderMode( GL_TRIANGLES )
 	, mShader( 0 )
 	, mVertexShader( 0 )
@@ -213,8 +214,8 @@ void OpenGLES20Renderer::createPipeline()
 
 void OpenGLES20Renderer::AddObject( Object* obj )
 {
-// 	mObjects.emplace_back( (Object*)obj );
-
+	mObjects.emplace_back( (Object*)obj );
+/*
 	bool opaque = true;
 	Vertex* vertices = obj->vertices();
 	for ( uint32_t i = 0; i < obj->verticesCount(); i++ ) {
@@ -229,6 +230,7 @@ void OpenGLES20Renderer::AddObject( Object* obj )
 	} else {
 		mObjects.emplace_back( (Object*)obj );
 	}
+*/
 }
 
 
@@ -248,14 +250,28 @@ void OpenGLES20Renderer::Compute()
 	std::vector< uint32_t > indices;
 
 	if ( mMatrixObjects ) {
+		for ( size_t i = 0; i < mObjects.size(); i++ ) {
+			float* ptr = mObjects[i]->matrix()->m;
+			if ( ptr >= mMatrixObjects and ptr < &mMatrixObjects[mMatrixObjectsSize] ) {
+				mObjects[i]->matrix()->setDataPointer( nullptr );
+			}
+		}
 		mInstance->Free( mMatrixObjects );
 	}
 	mMatrixObjects = (float*)mInstance->Malloc( sizeof(float) * 16 * mObjects.size() );
+	mMatrixObjectsSize = 16 * mObjects.size();
 
+	uint32_t baseVertex = 0;
 	for ( size_t i = 0; i < mObjects.size(); i++ ) {
+		gDebug() << "Object[" << i << "] baseVertex = " << baseVertex << ( i > 0 ? ( "(" + std::to_string( mObjects[i-1]->verticesCount() ) + ")" ) : "" ) << "\n";
 		mObjects[i]->matrix()->setDataPointer( &mMatrixObjects[ 16 * i ] );
-		indices.insert( indices.end(), mObjects[i]->indices(), &mObjects[i]->indices()[mObjects[i]->indicesCount()] );
+		for ( uint32_t j = 0; j < mObjects[i]->indicesCount(); j++ ) {
+// 			indices.emplace_back( mObjects[i]->indices()[j] );
+			indices.emplace_back( baseVertex + mObjects[i]->indices()[j] );
+		}
+// 		indices.insert( indices.end(), mObjects[i]->indices(), &mObjects[i]->indices()[mObjects[i]->indicesCount()] );
 		vertices.insert( vertices.end(), mObjects[i]->vertices(), &mObjects[i]->vertices()[mObjects[i]->verticesCount()] );
+		baseVertex += mObjects[i]->verticesCount();
 	}
 
 	glGenBuffers( 1, &mIBO );
@@ -306,7 +322,7 @@ void OpenGLES20Renderer::Draw()
 	uint32_t iIndices = 0;
 	for ( size_t i = 0; i < mObjects.size(); i++ ) {
 		glUniformMatrix4fv( mMatrixObjectID, 1, GL_FALSE, mObjects[i]->matrix()->data() );
-		glDrawElements( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)iIndices );
+		glDrawElements( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ) );
 		iIndices += mObjects[i]->indicesCount();
 	}
 

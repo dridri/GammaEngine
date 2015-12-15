@@ -49,6 +49,7 @@ public:
 	virtual Instance* CreateDevice( int devid, int queueCount = 1 ) = 0;
 	virtual uint64_t ReferenceImage( Image* image ) = 0;
 	virtual void UnreferenceImage( uint64_t ref ) = 0;
+	virtual void UpdateImageData( Image* image, uint64_t ref ) = 0;
 
 	Window* CreateWindow( const std::string& title, int width, int height, int flags = 0 );
 	Renderer* CreateRenderer();

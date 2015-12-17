@@ -255,6 +255,7 @@ void BaseWindow::pEventThread()
 	bool finished = false;
 	int key = 0;
 	XEvent event;
+	mHasResized = false;
 
 // 	while ( 1 )
 	{
@@ -276,7 +277,8 @@ void BaseWindow::pEventThread()
 					}
 					break;
 				case ConfigureNotify:
-					mHasResized = ( ( mWidth != event.xconfigure.width ) or ( mHeight != event.xconfigure.height ) );
+					mHasResized = true;
+// 					( ( mWidth != event.xconfigure.width ) or ( mHeight != event.xconfigure.height ) );
 					mWidth = event.xconfigure.width;
 					mHeight = event.xconfigure.height;
 					break;

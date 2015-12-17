@@ -140,6 +140,7 @@ void OpenGLES20Window::SwapBuffers()
 	SwapBuffersBase();
 
 	if ( mHasResized ) {
+		gDebug() << "has resized\n";
 		glViewport( 0, 0, mWidth, mHeight );
 	}
 }

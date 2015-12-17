@@ -30,6 +30,8 @@ public:
 	std::string Receive( int timeout = 0 );
 	std::string HTTPResponse( std::string* header = nullptr, int timeout = 0 );
 
+	int rawSocket() const { return mSocket; }
+
 private:
 	typedef struct {
 		uint8_t* p;

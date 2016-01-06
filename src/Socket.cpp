@@ -63,6 +63,7 @@ Socket::~Socket()
 
 int Socket::Connect( const std::string& server, short unsigned int port, PortType type, int timeout )
 {
+	mPortType = type;
 	struct hostent* hp = 0;
 	struct in_addr addr;
 	mSin = Instance::baseInstance()->Malloc( sizeof( struct sockaddr_in ) );
@@ -72,6 +73,7 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 	if ( type == UDP ) {
 		ptype = SOCK_DGRAM;
 	}
+	int proto = ( mPortType == UDP ) ? IPPROTO_UDP : 0;
 
 	addr.s_addr = inet_addr( server.c_str() );
 	hp = gethostbyname( server.c_str() );
@@ -83,7 +85,7 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 	}
 	sin->sin_family = AF_INET;
 	sin->sin_port = htons( port );
-	mSocket = socket( hp ? hp->h_addrtype : AF_INET, ptype, 0 );
+	mSocket = socket( hp ? hp->h_addrtype : AF_INET, ptype, proto );
 
 	timeout = std::max( 0, timeout );
 	if ( timeout > 0 ) {
@@ -119,6 +121,10 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 
 int Socket::Send( const void* data, size_t size, int timeout )
 {
+	if ( mPortType == UDP ) {
+		return sendto( mSocket, (const char*)data, size, 0, (struct sockaddr*)mSin, sizeof( struct sockaddr_in ) );
+	}
+
 	struct timeval tv;
 	tv.tv_sec = timeout / 1000;
 	tv.tv_usec = 1000 * ( timeout % 1000 );
@@ -133,10 +139,12 @@ int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 	uint8_t* data = (uint8_t*)_data;
 	int ret = 0;
 
-	struct timeval tv;
-	tv.tv_sec = timeout / 1000;
-	tv.tv_usec = 1000 * ( timeout % 1000 );
-	setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
+	if ( mPortType == TCP ) {
+		struct timeval tv;
+		tv.tv_sec = timeout / 1000;
+		tv.tv_usec = 1000 * ( timeout % 1000 );
+		setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
+	}
 
 	for ( std::list< Buffer >::iterator it = mRecvQueue.begin(); it != mRecvQueue.end(); ) {
 		if ( size < (*it).s ) {
@@ -170,7 +178,14 @@ int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 		}
 #endif
 		uint8_t* os_buf = (uint8_t*)Instance::baseInstance()->Malloc( check_size );
-		int os_size = recv( mSocket, (char*)os_buf, check_size, 0 );
+// 		int os_size = recv( mSocket, (char*)os_buf, check_size, 0 );
+		int os_size = 0;
+		if ( mPortType == UDP ) {
+			socklen_t slen = sizeof( struct sockaddr_in );
+			os_size = recvfrom( mSocket, (void*)os_buf, check_size, 0, (struct sockaddr*)mSin, &slen );
+		} else {
+			os_size = recv( mSocket, (char*)os_buf, check_size, 0 );
+		}
 #ifdef GE_WIN32
 		if ( os_size < 0 ) {
 			return -1;

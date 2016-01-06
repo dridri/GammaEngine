@@ -39,6 +39,7 @@ private:
 	} Buffer;
 
 	int mSocket;
+	PortType mPortType;
 	void* mSin;
 	std::list< Buffer > mRecvQueue;
 };

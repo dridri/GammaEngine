@@ -1,3 +1,11 @@
+/* WARNING
+ * THIS IS A DRAFT, ALL THE REFERENCES USED HERE ARE PROBABLY ALL WRONG
+ * All the code here is based on Mantle API samples, which Vulkan is more or less based on.
+ * You should not use this file as a reference or example, and let it here
+ * until Vulkan is officialy released
+ * WARNING
+ */
+
 /*
  * The GammaEngine Library 2.0 is a multiplatform Vulkan-based game engine
  * Copyright (C) 2015  Adrien Aubry <dridri85@gmail.com>

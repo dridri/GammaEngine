@@ -42,3 +42,5 @@ int main( int ac, char** av )
 }
 ```
 You can compile it using g++ -std=c++11 filename_you_choose.cpp -lgammaengine
+
+Advanced samples can be found in the documentation (http://doc.drich.fr)

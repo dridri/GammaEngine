@@ -23,6 +23,10 @@
 #include "Instance.h"
 #include "Debug.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265359
+#endif
+
 using namespace GE;
 
 MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel )

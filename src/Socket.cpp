@@ -75,7 +75,7 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 	int proto = 0;
 	if ( mPortType == UDPLite ) {
 #if ( !defined( IPPROTO_UDPLITE ) )
-		geDebug() << "ERROR : UDPLite port type not supported !\n";
+		gDebug() << "ERROR : UDPLite port type not supported !\n";
 		return -1;
 #else
 		proto = IPPROTO_UDPLITE;

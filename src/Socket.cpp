@@ -72,7 +72,17 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 	struct sockaddr_in* sin = ( struct sockaddr_in* )mSin;
 
 	int ptype = ( mPortType == UDP or mPortType == UDPLite ) ? SOCK_DGRAM : SOCK_STREAM;
-	int proto = ( mPortType == UDPLite ) ? IPPROTO_UDPLITE : ( ( mPortType == UDP ) ? IPPROTO_UDP : 0 );
+	int proto = 0;
+	if ( mPortType == UDPLite ) {
+#if ( !defined( IPPROTO_UDPLITE ) )
+		geDebug() << "ERROR : UDPLite port type not supported !\n";
+		return -1;
+#else
+		proto = IPPROTO_UDPLITE;
+#endif
+	} else if ( mPortType == UDP ) {
+		proto = IPPROTO_UDP;
+	}
 
 	addr.s_addr = inet_addr( server.c_str() );
 	hp = gethostbyname( server.c_str() );

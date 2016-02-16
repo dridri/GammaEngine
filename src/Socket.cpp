@@ -1,5 +1,6 @@
 #ifdef GE_WIN32
 #include <winsock2.h>
+#define socklen_t int
 #else
 #ifdef GE_ANDROID
 #include <fcntl.h>
@@ -98,7 +99,7 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 
 	if ( server.find( ".255" ) == server.length() - 4 ) {
 		int broadcast = 1;
-		setsockopt( mSocket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof( broadcast ) );
+		setsockopt( mSocket, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof( broadcast ) );
 		ret = bind( mSocket, (SOCKADDR*)mSin, sizeof(struct sockaddr_in) );
 	} else {
 		timeout = std::max( 0, timeout );
@@ -201,7 +202,7 @@ int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 		int os_size = 0;
 		if ( mPortType == UDP or mPortType == UDPLite ) {
 			socklen_t slen = sizeof( struct sockaddr_in );
-			os_size = recvfrom( mSocket, (void*)os_buf, check_size, 0, (struct sockaddr*)mSin, &slen );
+			os_size = recvfrom( mSocket, (char*)os_buf, check_size, 0, (struct sockaddr*)mSin, &slen );
 		} else {
 			os_size = recv( mSocket, (char*)os_buf, check_size, 0 );
 		}

@@ -9,6 +9,7 @@ option(audio "audio")
 option(release "release")
 option(bullet "bullet")
 option(static "static")
+option(notest "notest")
 
 if ( "${audio}" MATCHES OFF )
 	set( audio "yes" )
@@ -177,7 +178,7 @@ if ( "${audio}" MATCHES "yes" )
 endif()
 
 set(LIBS ${LIBS}
-	${PNG16_LIBRARIES}
+	${PNG_LIBRARIES}
 	${JPEG_LIBRARIES}
 	${FREETYPE_LIBRARIES}
 	${LIBMAD_LIBRARY}
@@ -249,9 +250,11 @@ endif()
 add_library(${LIB_NAME} "${mode}" ${SOURCES})
 target_link_libraries(${LIB_NAME} ${LIBS})
 
-if(NOT ("${target}" MATCHES "ios" OR "${target}" MATCHES "android"))
-add_executable(testexec src/main.cpp)
-target_link_libraries(testexec ${LIB_NAME} ${LIBS})
+if( NOT ("${target}" MATCHES "ios" OR "${target}" MATCHES "android") )
+	if ( NOT "${notest}" MATCHES "yes" AND NOT "${notest}" MATCHES "1" )
+		add_executable(testexec src/main.cpp)
+		target_link_libraries(testexec ${LIB_NAME} ${LIBS})
+	endif()
 endif()
 
 INSTALL(TARGETS ${LIB_NAME} ARCHIVE DESTINATION /usr/lib LIBRARY DESTINATION /usr/lib)

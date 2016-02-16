@@ -69,6 +69,12 @@ int FbRenderer::LoadVertexShader( const void* data, size_t size )
 }
 
 
+int FbRenderer::LoadGeometryShader( const void* data, size_t size )
+{
+	return 0;
+}
+
+
 int FbRenderer::LoadFragmentShader( const void* data, size_t size )
 {
 	return 0;
@@ -76,6 +82,12 @@ int FbRenderer::LoadFragmentShader( const void* data, size_t size )
 
 
 int FbRenderer::LoadVertexShader( const std::string& file )
+{
+	return 0;
+}
+
+
+int FbRenderer::LoadGeometryShader( const std::string& file )
 {
 	return 0;
 }

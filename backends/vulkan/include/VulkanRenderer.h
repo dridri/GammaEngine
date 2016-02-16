@@ -50,6 +50,8 @@ public:
 
 	virtual int LoadVertexShader( const std::string& file );
 	virtual int LoadVertexShader( const void* data, size_t size );
+	virtual int LoadGeometryShader( const std::string& file );
+	virtual int LoadGeometryShader( const void* data, size_t size );
 	virtual int LoadFragmentShader( const std::string& file );
 	virtual int LoadFragmentShader( const void* data, size_t size );
 	void setRenderMode( int mode );

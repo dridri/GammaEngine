@@ -28,6 +28,7 @@ typedef struct in_addr IN_ADDR;
 #include "Instance.h"
 #include "Socket.h"
 #include "Debug.h"
+#include <Time.h>
 
 using namespace GE;
 
@@ -50,7 +51,7 @@ Socket::Socket( const std::string& server, unsigned short port, PortType type, i
 	: mSocket( -1 )
 	, mSin( nullptr )
 {
-	if ( server != "" and port != 0 and ( type == TCP or type == UDP ) ) {
+	if ( server != "" and port != 0 and ( type == TCP or type == UDP or type == UDPLite ) ) {
 		Connect( server, port, type );
 	}
 }
@@ -63,17 +64,15 @@ Socket::~Socket()
 
 int Socket::Connect( const std::string& server, short unsigned int port, PortType type, int timeout )
 {
+	int ret = -1;
 	mPortType = type;
 	struct hostent* hp = 0;
 	struct in_addr addr;
 	mSin = Instance::baseInstance()->Malloc( sizeof( struct sockaddr_in ) );
 	struct sockaddr_in* sin = ( struct sockaddr_in* )mSin;
 
-	int ptype = SOCK_STREAM;
-	if ( type == UDP ) {
-		ptype = SOCK_DGRAM;
-	}
-	int proto = ( mPortType == UDP ) ? IPPROTO_UDP : 0;
+	int ptype = ( mPortType == UDP or mPortType == UDPLite ) ? SOCK_DGRAM : SOCK_STREAM;
+	int proto = ( mPortType == UDPLite ) ? IPPROTO_UDPLITE : ( ( mPortType == UDP ) ? IPPROTO_UDP : 0 );
 
 	addr.s_addr = inet_addr( server.c_str() );
 	hp = gethostbyname( server.c_str() );
@@ -87,23 +86,33 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 	sin->sin_port = htons( port );
 	mSocket = socket( hp ? hp->h_addrtype : AF_INET, ptype, proto );
 
-	timeout = std::max( 0, timeout );
-	if ( timeout > 0 ) {
-		_ge_socket_nonblock( mSocket, true );
-	}
+	if ( server.find( ".255" ) == server.length() - 4 ) {
+		int broadcast = 1;
+		setsockopt( mSocket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof( broadcast ) );
+		ret = bind( mSocket, (SOCKADDR*)mSin, sizeof(struct sockaddr_in) );
+	} else {
+		timeout = std::max( 0, timeout );
+		if ( timeout > 0 ) {
+			_ge_socket_nonblock( mSocket, true );
+		}
 
-	int ret = ( mSocket < 0 ) ? mSocket : connect( mSocket, (SOCKADDR*)sin, sizeof( *sin ) );
-	if ( timeout > 0 ) {
-		struct timeval tv;
-		tv.tv_sec = timeout / 1000;
-		tv.tv_usec = 1000 * ( timeout % 1000 );
-		setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
-		fd_set set;
-		FD_ZERO( &set );
-		FD_SET( mSocket, &set );
-		ret = select( mSocket + 1, nullptr, &set, nullptr, &tv );
-	}
+		ret = ( mSocket < 0 ) ? mSocket : connect( mSocket, (SOCKADDR*)sin, sizeof( *sin ) );
+		if ( timeout > 0 ) {
+			struct timeval tv;
+			tv.tv_sec = timeout / 1000;
+			tv.tv_usec = 1000 * ( timeout % 1000 );
+			setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
+			fd_set set;
+			FD_ZERO( &set );
+			FD_SET( mSocket, &set );
+			ret = select( mSocket + 1, nullptr, &set, nullptr, &tv );
+		}
 
+		if ( timeout > 0 and mSocket >= 0 ) {
+			_ge_socket_nonblock( mSocket, false );
+		}
+	}
+/*
 	if ( ret < 0 ) {
 		gDebug() << "Socket error : " << strerror( errno ) << "\n";
 		if ( mSocket >= 0 ) {
@@ -111,25 +120,22 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 		}
 		mSocket = -1;
 	}
-
-	if ( timeout > 0 and mSocket >= 0 ) {
-		_ge_socket_nonblock( mSocket, false );
-	}
+*/
 	return ret;
 }
 
 
 int Socket::Send( const void* data, size_t size, int timeout )
 {
-	if ( mPortType == UDP ) {
+	if ( mPortType == UDP or mPortType == UDPLite ) {
 		return sendto( mSocket, (const char*)data, size, 0, (struct sockaddr*)mSin, sizeof( struct sockaddr_in ) );
 	}
-
+/*
 	struct timeval tv;
 	tv.tv_sec = timeout / 1000;
 	tv.tv_usec = 1000 * ( timeout % 1000 );
 	setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
-
+*/
 	return send( mSocket, (const char*)data, size, 0 );
 }
 
@@ -139,7 +145,8 @@ int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 	uint8_t* data = (uint8_t*)_data;
 	int ret = 0;
 
-	if ( mPortType == TCP ) {
+	timeout = std::max( 0, timeout );
+	if ( timeout > 0 ) {
 		struct timeval tv;
 		tv.tv_sec = timeout / 1000;
 		tv.tv_usec = 1000 * ( timeout % 1000 );
@@ -168,7 +175,7 @@ int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 #else
 		int check_size = 0;
 #endif
-		while ( check_size == 0 ) {
+		while ( timeout <= 0 and check_size == 0 ) {
 			ioctlsocket( mSocket, FIONREAD, &check_size );
 			usleep( 0 );
 		}
@@ -177,34 +184,45 @@ int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 			return -1;
 		}
 #endif
+		if ( check_size == 0 ) {
+			check_size = size;
+		}
 		uint8_t* os_buf = (uint8_t*)Instance::baseInstance()->Malloc( check_size );
-// 		int os_size = recv( mSocket, (char*)os_buf, check_size, 0 );
 		int os_size = 0;
-		if ( mPortType == UDP ) {
+		if ( mPortType == UDP or mPortType == UDPLite ) {
 			socklen_t slen = sizeof( struct sockaddr_in );
 			os_size = recvfrom( mSocket, (void*)os_buf, check_size, 0, (struct sockaddr*)mSin, &slen );
 		} else {
 			os_size = recv( mSocket, (char*)os_buf, check_size, 0 );
 		}
-#ifdef GE_WIN32
+/*
 		if ( os_size < 0 ) {
+			gDebug() << "receive error : " << strerror( errno ) << "\n";
+			Instance::baseInstance()->Free( os_buf );
 			return -1;
 		}
-#endif
-
-		memcpy( data + ret, os_buf, std::min( needed, os_size ) );
-
-		if ( os_size < needed ) {
-			ret += os_size;
-		} else {
-			ret += needed;
-			Buffer buf;
-			buf.s = os_size - needed;
-			buf.p = (uint8_t*)Instance::baseInstance()->Malloc( buf.s );
-			memcpy( buf.p, os_buf + needed, buf.s );
-			mRecvQueue.push_back( buf );
+*/
+		if ( os_size <= 0 and timeout > 0 ) {
+			Instance::baseInstance()->Free( os_buf );
+			return 0;
 		}
-		Instance::baseInstance()->Free( os_buf );
+
+		if ( os_size > 0 ) {
+// 			gDebug() << "memcpy( "<< (void*)data << " + " << ret << ", " << (void*)os_buf << ", [" << std::min( needed, os_size ) << "]std::min( " << needed << ", " << os_size << " ) )\n";
+			memcpy( data + ret, os_buf, std::min( needed, os_size ) );
+
+			if ( os_size < needed ) {
+				ret += os_size;
+			} else {
+				ret += needed;
+				Buffer buf;
+				buf.s = os_size - needed;
+				buf.p = (uint8_t*)Instance::baseInstance()->Malloc( buf.s );
+				memcpy( buf.p, os_buf + needed, buf.s );
+				mRecvQueue.push_back( buf );
+			}
+			Instance::baseInstance()->Free( os_buf );
+		}
 	}
 
 	return ret;

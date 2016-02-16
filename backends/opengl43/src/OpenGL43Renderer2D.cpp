@@ -84,6 +84,9 @@ OpenGL43Renderer2D::OpenGL43Renderer2D( Instance* instance, uint32_t width, uint
 	, mWidth( width )
 	, mHeight( height )
 {
+	mDepthTestEnabled = false;
+	mBlendingEnabled = true;
+
 	mMatrixProjection->Orthogonal( 0.0, mWidth, mHeight, 0.0, -2049.0, 2049.0 );
 	mMatrixView->Identity();
 
@@ -103,7 +106,13 @@ OpenGL43Renderer2D::~OpenGL43Renderer2D()
 
 void OpenGL43Renderer2D::setDepthTestEnabled( bool en )
 {
-	// TODO
+	OpenGL43Renderer::setDepthTestEnabled( en );
+}
+
+
+void OpenGL43Renderer2D::setBlendingEnabled (bool en )
+{
+	OpenGL43Renderer::setRenderMode( en );
 }
 
 
@@ -232,13 +241,19 @@ void OpenGL43Renderer2D::Render( GE::Image* image, int mode, int start, int n, c
 	glUniform1f( mFloatTimeID, Time::GetSeconds() );
 	glUniformMatrix4fv( mMatrixObjectID, 1, GL_FALSE, matrix.constData() );
 
-	glDisable( GL_DEPTH_TEST );
-	glEnable( GL_BLEND );
-	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+	if ( mDepthTestEnabled ) {
+		glEnable( GL_DEPTH_TEST );
+	} else {
+		glDisable( GL_DEPTH_TEST );
+	}
+	if ( mBlendingEnabled ) {
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+	} else {
+		glDisable( GL_BLEND );
+	}
 
 	glDrawArrays( mode, start, n );
-
-	glEnable( GL_DEPTH_TEST );
 
 
 	glBindVertexArray( 0 );

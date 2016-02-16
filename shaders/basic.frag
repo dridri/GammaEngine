@@ -2,7 +2,7 @@
 
 #version 420 core
 #extension GL_ARB_bindless_texture : require
-
+/*
 flat in sampler2D ge_Texture0;
 flat in sampler2D ge_Texture1;
 flat in int ge_Texture0Base;
@@ -13,6 +13,18 @@ in vec3 ge_TextureCoord;
 in vec3 ge_Normal;
 in vec3 ge_Position;
 // in mat3 tangentToWorld;
+*/
+
+flat in sampler2D ge_Textures[8];
+
+in VertexData {
+	flat uint ge_Texture0Base;
+	flat uint ge_TextureCount;
+	vec4 ge_Color;
+	vec3 ge_TextureCoord;
+	vec3 ge_Normal;
+	vec3 ge_Position;
+} VertexIn;
 
 out vec4 ge_FragColor;
 out uint ge_FragDepth;
@@ -21,20 +33,16 @@ out vec3 ge_FragPosition;
 
 void main()
 {
-	ge_FragNormal = ge_Normal * 0.5 + vec3(0.5);
+	ge_FragNormal = VertexIn.ge_Normal * 0.5 + vec3(0.5);
 
-	if ( ge_HasTexture != 0.0 ) {
-		ge_FragColor = ge_Color * texture2D( ge_Texture0, ge_TextureCoord.xy );
+	if ( VertexIn.ge_TextureCount > 0 ) {
+		ge_FragColor = VertexIn.ge_Color;
+		ge_FragColor = VertexIn.ge_Color * texture2D( ge_Textures[0], VertexIn.ge_TextureCoord.xy );
 	} else {
-		ge_FragColor = ge_Color;
+		ge_FragColor = VertexIn.ge_Color;
 	}
-// 	ge_FragColor = ge_Color * mix( vec4(1.0), texture2D( ge_Texture0, ge_TextureCoord.xy ), ge_HasTexture );
-
-// 		if ( ge_TextureCount > 1 ) {
-// 			ge_FragNormal = ( texture2D( ge_Texture1, ge_TextureCoord.xy ).xyz * 2.0 - vec3(1.0) ) * tangentToWorld;
-// 		}
 
 	ge_FragDepth = uint( gl_FragCoord.z * 65535.0 );
-	ge_FragPosition = ge_Position;
+	ge_FragPosition = VertexIn.ge_Position;
 // 	ge_FragColor.a = 1.0;
 }

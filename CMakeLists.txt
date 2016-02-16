@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
+set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
 project(gammaengine)
 
 option(target "target")
@@ -19,6 +20,10 @@ endif()
 
 if ( "${target}" MATCHES "ios" )
 	set( bullet "no" )
+elseif ( "${target}" MATCHES "rpi*" )
+	include_directories( /opt/vc/include )
+	include_directories( /opt/vc/include/interface/vcos )
+	include_directories( /opt/vc/include/interface/vcos/pthreads )
 else()
 	find_package(OpenGL REQUIRED)
 endif()
@@ -32,7 +37,7 @@ if ( "${bullet}" MATCHES "yes" )
 endif()
 
 include_directories(${FREETYPE_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS}/freetype)
-include_directories(${PNG16_INCLUDE_DIR})
+include_directories(${PNG_INCLUDE_DIR})
 include_directories(${BULLET_INCLUDE_DIR})
 
 set(mode SHARED)
@@ -51,12 +56,14 @@ if(${target} MATCHES OFF)
 	endif()
 endif()
 
+set_property( GLOBAL PROPERTY target "${target}" )
+
 add_definitions(-DGE_LIB)
 if( NOT ${backend} MATCHES OFF )
 	add_definitions(-DGE_STATIC_BACKEND=${backend})
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unknown-pragmas -Wno-unused-variable")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unknown-pragmas -Wno-unused-variable -Wno-pmf-conversions")
 if(NOT "${target}" MATCHES "ios")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable")
 endif()
@@ -114,6 +121,7 @@ set(INCLUDES
 	include/Vector.h
 	include/Vertex.h
 	include/Window.h
+	include/FramebufferWindow.h
 )
 
 set(INCLUDES_TARGET
@@ -148,6 +156,7 @@ set(SOURCES ${SOURCES}
 	src/Thread.cpp
 	src/MetaObject.cpp
 	src/Debug.cpp
+	src/FramebufferWindow.cpp
 # 	fake/dummy_vk.cpp
 )
 
@@ -202,12 +211,18 @@ elseif("${target}" MATCHES "ios")
 	endif()
 	set(mode STATIC)
 else()
-	find_package(ALSA REQUIRED)
-	add_definitions(-DGE_LINUX)
+	if ( "${target}" MATCHES "._egl")
+		add_definitions(-DGE_LINUX)
+		add_definitions(-DGE_EGL)
+		set(SOURCES ${SOURCES} src/egl/BaseWindow.cpp)
+	else()
+		add_definitions(-DGE_LINUX)
+		set(SOURCES ${SOURCES} src/linux/BaseWindow.cpp)
+		set(LIBS ${OPENGL_LIBRARIES} ${LIBS} ${ALSA_LIBRARY} -lX11 -lXext -lXrender -ldl -pthread)
+	endif()
 	include_directories(include/linux)
-	set(LIBS ${OPENGL_LIBRARIES} ${LIBS} ${ALSA_LIBRARY} -lX11 -lXext -lXrender -ldl -pthread)
-	set(SOURCES ${SOURCES} src/linux/BaseWindow.cpp)
 	if ( "${audio}" MATCHES "yes" )
+		find_package(ALSA REQUIRED)
 		set(SOURCES ${SOURCES} src/linux/AudioOutput.cpp)
 		set(LIBS ${LIBS} ${ALSA_LIBRARY})
 	endif()
@@ -218,8 +233,11 @@ set( LIB_NAME "gammaengine" )
 
 if( ${backend} MATCHES OFF )
 #	add_subdirectory(backends/vulkan)
-	add_subdirectory(backends/opengl43)
+	if ( NOT ${target} MATCHES "rpi*" AND NOT ${target} MATCHES "android" AND NOT ${target} MATCHES "ios" )
+		add_subdirectory(backends/opengl43)
+	endif()
 	add_subdirectory(backends/opengles20)
+	add_subdirectory(backends/framebuffer)
 else()
 	file(GLOB BSOURCES backends/${backend}/src/*)
 	set(SOURCES ${SOURCES} ${BSOURCES})

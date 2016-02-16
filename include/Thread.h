@@ -26,7 +26,9 @@
 namespace GE
 {
 
-class Window;
+template <typename T> class ProxyWindow;
+class BaseWindow;
+typedef ProxyWindow< BaseWindow > Window;
 
 class Thread
 {

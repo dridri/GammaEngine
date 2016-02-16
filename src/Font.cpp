@@ -36,6 +36,7 @@ Font::Font()
 	: mAllocInstance( nullptr )
 	, mSize( 0 )
 	, mTexture( nullptr )
+	, mOutlineColor( 0 )
 	, mData( nullptr )
 	, mFace( nullptr )
 // 	, mGlyphs { { 0, 0, 0, 0, 0, 0 } }
@@ -56,9 +57,11 @@ Font::Font()
 }
 
 
-Font::Font( File* file, int size, const std::string& extension, Instance* instance )
+Font::Font( File* file, int size, uint32_t outlinecolor, const std::string& extension, Instance* instance )
 	: Font()
 {
+	mOutlineColor = outlinecolor;
+
 	if ( !instance ) {
 		instance = Instance::baseInstance();
 	}
@@ -68,9 +71,11 @@ Font::Font( File* file, int size, const std::string& extension, Instance* instan
 }
 
 
-Font::Font( const std::string filename, int size, Instance* instance )
+Font::Font( const std::string filename, int size, uint32_t outlinecolor, Instance* instance )
 	: Font()
 {
+	mOutlineColor = outlinecolor;
+
 	if ( !instance ) {
 		instance = Instance::baseInstance();
 	}
@@ -135,7 +140,9 @@ void Font::Load( File* file, int size, const std::string& extension, Instance* i
 		FontLoader* modInstance = loader;
 		loader = loader->NewInstance();
 		loader->Load( instance, file, size );
+		uint32_t outline = mOutlineColor;
 		*this = static_cast< Font >( *loader );
+		mOutlineColor = outline;
 		delete loader;
 		mModInstance = modInstance;
 		mAllocInstance = instance;
@@ -176,6 +183,12 @@ Image* Font::texture() const
 }
 
 
+uint32_t Font::outlineColor() const
+{
+	return mOutlineColor;
+}
+
+
 void Font::setSize( uint32_t size )
 {
 	fDebug( size, mModInstance );
@@ -199,6 +212,16 @@ void Font::RenderGlyphs()
 	}
 
 	mModInstance->RenderGlyphs( this );
+}
+
+
+void Font::RenderCharacter( const char c, uint32_t color, uint32_t* buffer, uint32_t xofs, uint32_t yofs, uint32_t buf_width, uint32_t buf_height, uint32_t buf_bpp, bool reverse )
+{
+	if ( !mModInstance ) {
+		return;
+	}
+
+	mModInstance->RenderCharacter( this, c, color, buffer, xofs, yofs, buf_width, buf_height, buf_bpp, reverse );
 }
 
 

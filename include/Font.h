@@ -40,8 +40,8 @@ public:
 	} Glyph;
 
 	Font();
-	Font( File* file, int size = 16, const std::string& extension = "", Instance* instance = nullptr );
-	Font( const std::string filename, int size = 16, Instance* instance = nullptr );
+	Font( File* file, int size = 16, uint32_t outlinecolor = 0, const std::string& extension = "", Instance* instance = nullptr );
+	Font( const std::string filename, int size = 16, uint32_t outlinecolor = 0, Instance* instance = nullptr );
 	~Font();
 
 	uint32_t size() const;
@@ -49,8 +49,10 @@ public:
 	std::map< wchar_t, Glyph >& glyphs();
 	Glyph* glyph( wchar_t c ) const;
 	Image* texture() const;
+	uint32_t outlineColor() const;
 	void setSize( uint32_t size );
 	void RenderGlyphs();
+	void RenderCharacter( const char c, uint32_t color, uint32_t* buffer, uint32_t xofs, uint32_t yofs, uint32_t buf_width, uint32_t buf_height, uint32_t buf_bpp = 32, bool reverse = false );
 
 	void measureString( const std::string& str, int* width, int* height );
 	void measureString( const std::wstring& str, int* width, int* height );
@@ -65,6 +67,7 @@ protected:
 	Instance* mAllocInstance;
 	int mSize;
 	Image* mTexture;
+	uint32_t mOutlineColor;
 	uint8_t* mData;
 	void* mFace;
 // 	Glyph mGlyphs[256];
@@ -87,6 +90,7 @@ public:
 
 	virtual void resize( Font* font, int size ) = 0;
 	virtual void RenderGlyphs( Font* font ) = 0;
+	virtual void RenderCharacter( Font* font, const char c, uint32_t color, uint32_t* buffer, uint32_t xofs, uint32_t yofs, uint32_t buf_width, uint32_t buf_height, uint32_t buf_bpp = 32, bool reverse = false ) = 0;
 	virtual uint32_t glyphWidth( Font* font, wchar_t c ) = 0;
 };
 

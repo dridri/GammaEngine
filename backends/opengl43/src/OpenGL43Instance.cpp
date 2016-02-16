@@ -26,13 +26,13 @@
 	#define ALIGN(x, align) (((x)+((align)-1))&~((align)-1))
 #endif
 
-extern "C" GE::Instance* CreateInstance( const char* appName, uint32_t appVersion ) {
-	return new OpenGL43Instance( appName, appVersion );
+extern "C" GE::Instance* CreateInstance( void* pBackend, const char* appName, uint32_t appVersion ) {
+	return new OpenGL43Instance( pBackend, appName, appVersion );
 }
 
 
-OpenGL43Instance::OpenGL43Instance( const char* appName, uint32_t appVersion )
-	: Instance()
+OpenGL43Instance::OpenGL43Instance( void* pBackend, const char* appName, uint32_t appVersion )
+	: Instance( pBackend )
 {
 	fDebug( appName, appVersion );
 

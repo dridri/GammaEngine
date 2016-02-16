@@ -48,10 +48,11 @@ public:
 
 	virtual void resize( Font* font, int size );
 	virtual void RenderGlyphs( Font* font );
+	virtual void RenderCharacter( Font* font, const char c, uint32_t color, uint32_t* buffer, uint32_t xofs, uint32_t yofs, uint32_t buf_width, uint32_t buf_height, uint32_t buf_bpp = 32, bool reverse = false );
 	virtual uint32_t glyphWidth( Font* font, wchar_t c );
 
 private:
-	static void fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, uint32_t* framebuffer, int width, int height );
+	static void fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, uint32_t* framebuffer, int width, int height, uint32_t color = 0xFFFFFFFF, uint32_t outline = 0, uint32_t buf_bpp = 32, bool reverse = false );
 	static FontLoaderTtf* mBaseInstance;
 	static FT_Library ft_library;
 };

@@ -157,9 +157,9 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 
 		font->glyph(n)->x = std::max( x, 0 );
 		font->glyph(n)->y = y - slot->bitmap_top;
-		font->glyph(n)->w = slot->bitmap.width + slot->bitmap_left;
+		font->glyph(n)->w = slot->bitmap.width + slot->bitmap_left + ( font->outlineColor() ? 4 : 0 );
 		font->glyph(n)->h = slot->bitmap.rows;
-		font->glyph(n)->advX = slot->advance.x >> 6;
+		font->glyph(n)->advX = (slot->advance.x >> 6);
 		font->glyph(n)->posY = slot->bitmap_top;
 
 		if ( !glyph_index && !first_null_char ) {
@@ -168,7 +168,7 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 			continue;
 		}
 
-		fontPrintTextImpl2( &slot->bitmap, x + slot->bitmap_left, y - slot->bitmap_top, texture->data(), texture->width(), texture->height() );
+		fontPrintTextImpl2( &slot->bitmap, x + slot->bitmap_left, y - slot->bitmap_top, texture->data(), texture->width(), texture->height(), 0xFFFFFFFF, font->outlineColor() );
 
 		x += advX;
 		first_null_char = false;
@@ -176,27 +176,101 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 }
 
 
-void FontLoaderTtf::fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, uint32_t* framebuffer, int width, int height )
+void FontLoaderTtf::fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, uint32_t* framebuffer, int width, int height, uint32_t color, uint32_t outline, uint32_t buf_bpp, bool reverse )
 {
-// 	fDebug( bitmap, xofs, yofs, framebuffer, width, height );
 	int x, y;
+	int bpp_step = buf_bpp / 8;
+
+	uint16_t color16 = ( ( color & 0xF80000 ) >> 19 ) | ( ( color & 0xFC00 ) >> 5 ) | ( ( color & 0xF8 ) << 8 );
+
+	if ( reverse ) {
+		framebuffer += width * height * bpp_step / 4;
+		bpp_step = -bpp_step;
+	}
 
 	uint8_t* line = bitmap->buffer;
-	uint32_t* fbLine = framebuffer + xofs + yofs * width;
+	uint8_t* fbLine = ((uint8_t*)framebuffer) + ( xofs + yofs * width ) * bpp_step;
 	for ( y = 0; y < (int)bitmap->rows; y++ ) {
 		uint8_t* column = line;
-		uint32_t* fbColumn = fbLine;
+		uint8_t* fbColumn = fbLine;
 		for ( x = 0; x < (int)bitmap->width; x++ ) {
-			if (x + xofs < width && x + xofs >= 0 && y + yofs < height && y + yofs >= 0){
+			if ( x + xofs < width && x + xofs >= 0 && y + yofs < height && y + yofs >= 0 ) {
 				uint8_t val = *column;
-				*fbColumn = ( val << 24 ) | 0x00FFFFFF;
+				if ( val >= 0x7F ) {
+					switch ( buf_bpp ) {
+						case 16 :
+							*((uint16_t*)fbColumn) = color16;
+							break;
+						default :
+							*((uint32_t*)fbColumn) = ( val << 24 ) | ( color & 0x00FFFFFF );
+							break;
+					}
+				}
 			}
 			column++;
-			fbColumn++;
+			fbColumn += bpp_step;
 		}
 		line += bitmap->pitch;
-		fbLine += width;
+		fbLine += width * bpp_step;
 	}
+
+	if ( outline ) {
+		line = bitmap->buffer;
+		fbLine = ((uint8_t*)framebuffer) + ( ( xofs - 2 ) + ( yofs - 2 ) * width ) * bpp_step;
+		for ( y = 0; y < (int)bitmap->rows + 2; y++ ) {
+			uint8_t* column = line;
+			uint8_t* fbColumn = fbLine;
+			for ( x = 0; x < (int)bitmap->width + 2; x++ ) {
+				switch ( buf_bpp ) {
+					case 16 :
+						// TODO
+						break;
+					default :
+						uint32_t right = *((uint32_t*)(fbColumn+bpp_step));
+						uint32_t left = *((uint32_t*)(fbColumn-bpp_step));
+						uint32_t bottom = *((uint32_t*)(fbColumn+width*bpp_step));
+						uint32_t top = *((uint32_t*)(fbColumn-width*bpp_step));
+						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( right & 0xFF000000 ) != 0 ) {
+							*((uint32_t*)fbColumn) = outline;
+						}
+						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( left & 0xFF000000 ) != 0 and left != outline ) {
+							*((uint32_t*)fbColumn) = outline;
+						}
+						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( bottom & 0xFF000000 ) != 0 ) {
+							*((uint32_t*)fbColumn) = outline;
+						}
+						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( top & 0xFF000000 ) != 0 and top != outline ) {
+							*((uint32_t*)fbColumn) = outline;
+						}
+						break;
+				}
+				column++;
+				fbColumn += bpp_step;
+			}
+			line += bitmap->pitch;
+			fbLine += width * bpp_step;
+		}
+	}
+}
+
+
+void FontLoaderTtf::RenderCharacter( Font* font, const char c, uint32_t color, uint32_t* buffer, uint32_t xofs, uint32_t yofs, uint32_t buf_width, uint32_t buf_height, uint32_t buf_bpp, bool reverse )
+{
+	FT_Face face = (FT_Face)font->face();
+	FT_GlyphSlot slot = face->glyph;
+	wchar_t n = c;
+
+	FT_UInt glyph_index = FT_Get_Char_Index( face, n );
+	int error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
+	if ( error ) {
+		return;
+	}
+	error = FT_Render_Glyph( slot, FT_RENDER_MODE_NORMAL );
+	if ( error ) {
+		return;
+	}
+
+	fontPrintTextImpl2( &slot->bitmap, xofs + slot->bitmap_left, yofs - slot->bitmap_top, buffer, buf_width, buf_height, color, font->outlineColor(), buf_bpp, reverse );
 }
 
 

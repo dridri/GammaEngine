@@ -64,8 +64,8 @@ static const char* vertex_shader_include =
 	"#extension GL_ARB_shader_draw_parameters : require\n"
 	"#extension GL_ARB_bindless_texture : require\n"
 	"\n"
-	"#define geTexture2D(x) sampler2D( ge_Textures[ ge_TextureBase + x ].xy )\n"
-	"#define geTexture3D(x) sampler3D( ge_Textures[ ge_TextureBase + x ].xy )\n"
+	"#define geTexture2D(x) sampler2D( ge_TextureHandlers[ ge_TextureBase + x ].xy )\n"
+	"#define geTexture3D(x) sampler3D( ge_TextureHandlers[ ge_TextureBase + x ].xy )\n"
 	"\n"
 	"layout(location = 0) in vec3 ge_VertexTexcoord;\n"
 	"layout(location = 1) in vec4 ge_VertexColor;\n"
@@ -86,7 +86,7 @@ static const char* vertex_shader_include =
 	"\n"
 	"layout (binding=2, std140) uniform ge_Textures_0\n"
 	"{\n"
-	"	uvec4 ge_Textures[256];\n"
+	"	uvec4 ge_TextureHandlers[256];\n"
 	"};\n"
 ;
 
@@ -97,8 +97,11 @@ OpenGL43Renderer::OpenGL43Renderer( Instance* instance )
 	, mMatrixObjects( 0 )
 	, mTotalObjectsInstances( 0 )
 	, mRenderMode( GL_TRIANGLES )
+	, mDepthTestEnabled( true )
+	, mBlendingEnabled( false )
 	, mShader( 0 )
 	, mVertexShader( 0 )
+	, mGeometryShader( 0 )
 	, mFragmentShader( 0 )
 {
 /*
@@ -162,6 +165,27 @@ int OpenGL43Renderer::LoadVertexShader( const void* data, size_t size )
 }
 
 
+int OpenGL43Renderer::LoadGeometryShader( const void* data, size_t size )
+{
+	mReady = false;
+	if ( mGeometryShader ) {
+		glDeleteShader( mGeometryShader );
+	}
+
+// 	const char* array[2] = { vertex_shader_include, (char*)data };
+	mGeometryShader = glCreateShader( GL_GEOMETRY_SHADER );
+// 	glShaderSource( mGeometryShader, 2, array, NULL );
+	glShaderSource( mGeometryShader, 1, (const char**)&data, NULL );
+	glCompileShader( mGeometryShader );
+	char log[4096] = "";
+	int logsize = 4096;
+	glGetShaderInfoLog( mGeometryShader, logsize, &logsize, log );
+	gDebug() << "Geometry compile : " << log << "\n";
+
+	return 0;
+}
+
+
 int OpenGL43Renderer::LoadFragmentShader( const void* data, size_t size )
 {
 	mReady = false;
@@ -196,6 +220,19 @@ int OpenGL43Renderer::LoadVertexShader( const std::string& file )
 }
 
 
+int OpenGL43Renderer::LoadGeometryShader( const std::string& file )
+{
+	mReady = false;
+
+	size_t sz = 0;
+	uint8_t* data = loadShader( file, &sz );
+	int ret = LoadGeometryShader( data, sz );
+	mInstance->Free( data );
+
+	return ret;
+}
+
+
 int OpenGL43Renderer::LoadFragmentShader( const std::string& file )
 {
 	mReady = false;
@@ -215,6 +252,29 @@ void OpenGL43Renderer::setRenderMode( int mode )
 }
 
 
+void OpenGL43Renderer::setDepthTestEnabled( bool en )
+{
+	mDepthTestEnabled = en;
+	if ( en ) {
+		glEnable( GL_DEPTH_TEST );
+	} else {
+		glDisable( GL_DEPTH_TEST );
+	}
+}
+
+
+void OpenGL43Renderer::setBlendingEnabled(bool en)
+{
+	mBlendingEnabled = en;
+	if ( en ) {
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+	} else {
+		glDisable( GL_BLEND );
+	}
+}
+
+
 void OpenGL43Renderer::createPipeline()
 {
 	if ( mShader ) {
@@ -222,6 +282,9 @@ void OpenGL43Renderer::createPipeline()
 	}
 	mShader = glCreateProgram();
 	glAttachShader( mShader, mVertexShader );
+	if ( mGeometryShader ) {
+// 		glAttachShader( mShader, mGeometryShader );
+	}
 	glAttachShader( mShader, mFragmentShader );
 
 	glBindFragDataLocation( mShader, 0, "ge_FragColor" );
@@ -439,11 +502,27 @@ void OpenGL43Renderer::Draw()
 	const uint32_t binding_proj = 0;
 	const uint32_t binding_view = 1;
 	const uint32_t binding_textures = 2;
+
+	if ( mObjects.size() == 0 ) {
+		return;
+	}
 /*
 	if ( !mReady ) {
 		Compute();
 	}
 */
+
+	if ( mDepthTestEnabled ) {
+		glEnable( GL_DEPTH_TEST );
+	} else {
+		glDisable( GL_DEPTH_TEST );
+	}
+	if ( mBlendingEnabled ) {
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+	} else {
+		glDisable( GL_BLEND );
+	}
 
 	glUseProgram( mShader );
 	glBindVertexArray( mVAO );

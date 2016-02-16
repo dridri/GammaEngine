@@ -162,7 +162,10 @@ uint64_t Time::WaitTick( uint64_t t, uint64_t last )
 {
 	uint64_t ticks = GetTick();
 	if ( ( ticks - last ) < t ) {
-		Sleep( t - (ticks - last) - 1);
+		int64_t wait = t - (ticks - last) - 1;
+		if ( wait >= 0 ) {
+			Sleep( wait );
+		}
 	}
 	return GetTick();
 }

@@ -28,6 +28,10 @@
 //	#include <GLES2/gl2ext.h>
 	#include <GL/gl.h>
 	#include <GL/wglext.h>
+#elif defined(GE_EGL)
+	#include <EGL/egl.h>
+	#include <EGL/eglext.h>
+	#include <EGL/eglplatform.h>
 #elif defined(GE_LINUX)
 	#include <EGL/egl.h>
 	#include <EGL/eglext.h>
@@ -50,7 +54,7 @@ extern "C" GE::Window* CreateWindow( GE::Instance* instance, const std::string& 
 }
 
 OpenGLES20Window::OpenGLES20Window( Instance* instance, const std::string& title, int width, int height, Flags flags )
-	: Window( instance, title, width, height, flags )
+	: GE::Window( instance, title, width, height, flags )
 	, mClearColor( 0 )
 {
 	// TODO : MSAA
@@ -68,6 +72,7 @@ OpenGLES20Window::OpenGLES20Window( Instance* instance, const std::string& title
 		glext_loaded = true;
 	}
 
+#elif defined(GE_EGL)
 #elif defined(GE_LINUX)
 	mEGLContext = glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, 0, true );
 	glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>(mEGLContext) );
@@ -86,9 +91,9 @@ OpenGLES20Window::OpenGLES20Window( Instance* instance, const std::string& title
 	glEnable( GL_BLEND );
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 
-	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Front
-	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Back
-	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight / 2 ); // Depth
+	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Front
+	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Back
+	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight / 2 ); // Depth
 }
 
 
@@ -132,6 +137,7 @@ void OpenGLES20Window::SwapBuffers()
 {
 #ifdef GE_WIN32
 	::SwapBuffers( GetDC( (HWND)mWindow ) );
+#elif defined(GE_EGL)
 #elif defined(GE_LINUX)
 	glXSwapBuffers( mDisplay, mWindow );
 #elif defined(GE_ANDROID)
@@ -150,8 +156,12 @@ uint64_t OpenGLES20Window::CreateSharedContext()
 {
 #ifdef GE_WIN32
 	return 0;
+#elif defined(GE_EGL)
+	return 0;
 #elif defined(GE_LINUX)
 	return (uint64_t)glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, (GLXContext)mEGLContext, true );
+#elif defined(GE_EGL)
+	return 0;
 #elif defined(GE_ANDROID)
 	return 0;
 #elif defined(GE_IOS)
@@ -163,6 +173,7 @@ uint64_t OpenGLES20Window::CreateSharedContext()
 void OpenGLES20Window::BindSharedContext( uint64_t ctx )
 {
 #ifdef GE_WIN32
+#elif defined(GE_EGL)
 #elif defined(GE_LINUX)
 	int ret = glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>((void*)ctx) );
 	gDebug() << "glXMakeCurrent returned : " << ret << "\n";

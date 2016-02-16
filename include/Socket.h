@@ -13,7 +13,8 @@ class Socket : public MetaObject
 public:
 	typedef enum {
 		TCP,
-		UDP
+		UDP,
+		UDPLite,
 	} PortType;
 
 	Socket( const std::string& server = "", unsigned short port = 0, PortType type = TCP, int timeout = 0 );

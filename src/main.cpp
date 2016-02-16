@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <iostream>
 
+// #include <osvr/ClientKit/ClientKit.h>
+// #include <osvr/ClientKit/Display.h>
+
 #include "Instance.h"
 #include "Window.h"
 #include "Scene.h"
@@ -25,7 +28,74 @@
 #include "Music.h"
 #include "Debug.h"
 
+		extern "C" void glViewport(int, int, int, int);
 using namespace GE;
+
+
+
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <linux/fb.h>
+#include "FramebufferWindow.h"
+
+class FBDevThread : protected Thread {
+public:
+	FBDevThread() {
+		Start();
+	}
+protected:
+	virtual bool run()
+	{
+		mInstance = Instance::Create( "test::fbdev", 42, true, "framebuffer" );
+		mWindow = (ProxyWindow< FramebufferWindow >*)mInstance->CreateWindow( "", 480, 320, 0 );
+		mWindow->OpenSystemFramebuffer( "/tmp/fbe_buffer" );
+
+		Renderer2D* renderer = mInstance->CreateRenderer2D( mWindow->width(), mWindow->height() );
+		Image* img = new Image( "/home/drich/prog/libge/scene/data/image.png" );
+
+		Font* font = new Font( "/home/drich/games/StarCrash/data/RobotoCondensed-Light.ttf" );
+
+		while ( 1 )
+		{
+			mWindow->Clear( 0xFF202020 );
+// 			renderer->Draw( 0, 0, img );
+			renderer->DrawText( 20, 20, font, 0xFFFFFFFF, "pute" );
+			mWindow->SwapBuffers();
+
+			mTicks = Time::WaitTick( 1000 / 60, mTicks );
+			Time::GlobalSync();
+		}
+		return false;
+	}
+private:
+	Instance* mInstance;
+	ProxyWindow< FramebufferWindow >* mWindow;
+	uint64_t mTicks;
+};
+
+void TEST()
+{
+	FBDevThread* fbdev_thread = new FBDevThread();
+
+	while ( 1 ) {
+		usleep( 1000000 );
+	}
+/*
+	Instance* instance = Instance::Create( "test::gles20", 42, false, "opengles20" );
+	Window* window = instance->CreateWindow( "test::gles20", 1280, 720, 0 );
+
+	while ( 1 ) {
+		window->Clear( 0xFF202020 );
+		window->SwapBuffers();
+	}
+*/
+}
+
+
+
+
+
+
 
 class PhysicsThread : protected Thread {
 public:
@@ -47,10 +117,12 @@ private:
 
 int main( int argc, char** argv )
 {
-	srand( time(nullptr) );
+//	TEST();
+//	return 0;
 
-	Instance* instance = Instance::Create( "GammaEngine test", 42, true, "opengl43" );
+	Instance* instance = Instance::Create( "GammaEngse test", 42, true, "opengl43" );
 	Window* window = instance->CreateWindow( "Hello GammaEngine !", 1280, 720, Window::Resizable );
+// 	Window* window = instance->CreateWindow( "Hello GammaEngine !", 1920, 1080, Window::Fullscreen );
 	Input* input = new Input( window );
 
 	Font* font = new Font( "scene/Arial Unicode MS.ttf" );
@@ -134,7 +206,7 @@ int main( int argc, char** argv )
 	deferredRenderer->AddLight( light4 );
 
 	SkyRenderer* sky = new SkyRenderer( instance, 1378114.0f );
-	sky->AssociateSize( window );
+// 	sky->AssociateSize( window );
 	sky->AddLight( sun_light );
 
 	Scene* scene = new Scene();
@@ -153,6 +225,9 @@ int main( int argc, char** argv )
 	uint32_t img = 0;
 
 	PhysicsThread* physicsThread = new PhysicsThread( world );
+
+// 	osvr::clientkit::ClientContext ctx("drich.ge.vrtest");
+// 	osvr::clientkit::DisplayConfig display(ctx);
 
 	while ( 1 ) {
 		input->Update();
@@ -217,10 +292,84 @@ int main( int argc, char** argv )
 
 		deferredRenderer->Bind();
 		scene->Draw( camera );
+// 		renderer->Look( camera );
+// 		renderer->Draw();
 		deferredRenderer->Look( camera );
 		deferredRenderer->Render();
 		sky->Render( camera );
 
+/*
+		disp.forEachEye([](osvr::clientkit::Eye eye) {
+
+			/// Try retrieving the view matrix (based on eye pose) from OSVR
+			double viewMat[OSVR_MATRIX_SIZE];
+			eye.getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
+							viewMat);
+			/// Initialize the ModelView transform with the view matrix we
+			/// received
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			glMultMatrixd(viewMat);
+
+			/// For each display surface seen by the given eye of the given
+			/// viewer...
+			eye.forEachSurface([](osvr::clientkit::Surface surface) {
+				auto viewport = surface.getRelativeViewport();
+				glViewport(static_cast<GLint>(viewport.left),
+						static_cast<GLint>(viewport.bottom),
+						static_cast<GLsizei>(viewport.width),
+						static_cast<GLsizei>(viewport.height));
+
+				/// Set the OpenGL projection matrix based on the one we
+				/// computed.
+				double zNear = 0.1;
+				double zFar = 100;
+				double projMat[OSVR_MATRIX_SIZE];
+				surface.getProjectionMatrix(
+					zNear, zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
+									OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
+					projMat);
+
+				glMatrixMode(GL_PROJECTION);
+				glLoadIdentity();
+				glMultMatrixd(projMat);
+
+				/// Set the matrix mode to ModelView, so render code doesn't
+				/// mess with the projection matrix on accident.
+				glMatrixMode(GL_MODELVIEW);
+
+				/// Call out to render our scene.
+				renderScene();
+			});
+		});
+*/
+/*
+		{
+			renderer->projectionMatrix()->Perspective( 110.0f, (float)( window->width() / 2 ) / window->height(), 0.01f, 1000.0f );
+			rendererPhysics->projectionMatrix()->Perspective( 110.0f, (float)( window->width() / 2 ) / window->height(), 0.01f, 1000.0f );
+			sky->renderer()->projectionMatrix()->Perspective( 110.0f, (float)( window->width() / 2 ) / window->height(), 1.0f, 1378114.0f );
+			glViewport( 0, 0, window->width() / 2, window->height() );
+			deferredRenderer->Bind();
+			scene->Draw( camera );
+			deferredRenderer->Look( camera );
+			deferredRenderer->Render();
+			sky->Render( camera );
+		}
+		{
+			renderer->projectionMatrix()->Perspective( 110.0f, (float)( window->width() / 2 ) / window->height(), 0.01f, 1000.0f );
+			rendererPhysics->projectionMatrix()->Perspective( 110.0f, (float)( window->width() / 2 ) / window->height(), 0.01f, 1000.0f );
+			sky->renderer()->projectionMatrix()->Perspective( 110.0f, (float)( window->width() / 2 ) / window->height(), 1.0f, 1378114.0f );
+			glViewport( window->width() / 2, 0, window->width() / 2, window->height() );
+			deferredRenderer->Bind();
+			camera->setPosition( camera->position() + 0.3f * Vector3f( std::sin( camera->rotation().x ), -std::cos( camera->rotation().x ), 0.0f ) );
+			scene->Draw( camera );
+			deferredRenderer->Look( camera );
+			deferredRenderer->Render();
+			sky->Render( camera );
+			camera->setPosition( camera->position() - 0.3f * Vector3f( std::sin( camera->rotation().x ), -std::cos( camera->rotation().x ), 0.0f ) );
+		}
+		glViewport( 0, 0, window->width(), window->height() );
+*/
 		renderer2d->DrawText( 0, font->size() * 0, font, 0xFFFFFFFF, " FPS : " + std::to_string( (int)fps ) );
 		renderer2d->DrawText( 0, font->size() * 1, font, 0xFFFFFFFF, " RAM : " + std::to_string( instance->cpuRamCounter() / 1024 ) );
 		renderer2d->DrawText( 0, font->size() * 2, font, 0xFFFFFFFF, "VRAM : " + std::to_string( instance->gpuRamCounter() / 1024 ) );

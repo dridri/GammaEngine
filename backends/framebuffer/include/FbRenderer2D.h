@@ -17,20 +17,21 @@
  *
  */
 
-#ifndef OPENGL43RENDERER2D_H
-#define OPENGL43RENDERER2D_H
+#ifndef FRAMEBUFFERRENDERER2D_H
+#define FRAMEBUFFERRENDERER2D_H
 
 #include <vector>
-#include "OpenGL43Renderer.h"
+#include "FbRenderer.h"
 #include "Renderer2D.h"
 #include "Object.h"
+#include "Image.h"
 #include "Light.h"
 
-class OpenGL43Renderer2D : public Renderer2D, public OpenGL43Renderer
+class FbRenderer2D : public Renderer2D, public FbRenderer
 {
 public:
-	OpenGL43Renderer2D( Instance* instance, uint32_t width, uint32_t height );
-	~OpenGL43Renderer2D();
+	FbRenderer2D( Instance* instance, uint32_t width, uint32_t height );
+	~FbRenderer2D();
 
 	virtual void setDepthTestEnabled( bool en );
 	virtual void setBlendingEnabled( bool en );
@@ -62,11 +63,10 @@ public:
 protected:
 	void Compute();
 	void Prerender();
-	void Render( GE::Image* image, int mode, int start, int n, const Matrix& matrix );
-	bool m2DReady;
+	void RenderFlat( int x, int y, Image* image, int tx, int ty, int tw, int th );
+	void Render( Image* image, const Vertex2D* vertices, int n, const Matrix& matrix );
 	uint32_t mWidth;
 	uint32_t mHeight;
-	Image* mTextureWhite;
 };
 
-#endif // OPENGL43RENDERER2D_H
+#endif // FRAMEBUFFERRENDERER2D_H

@@ -50,7 +50,9 @@
 #include <mutex>
 
 namespace GE {
-	class Window;
+	template <typename T> class ProxyWindow;
+	class BaseWindow;
+	typedef ProxyWindow< BaseWindow > Window;
 	class Renderer;
 	class Vertex;
 	class Object;
@@ -61,7 +63,7 @@ using namespace GE;
 class OpenGLES20Instance : public Instance
 {
 public:
-	OpenGLES20Instance( const char* appName, uint32_t appVersion );
+	OpenGLES20Instance( void* pBackend, const char* appName, uint32_t appVersion );
 	virtual ~OpenGLES20Instance(){}
 
 	virtual int EnumerateGpus();

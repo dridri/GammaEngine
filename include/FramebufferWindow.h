@@ -17,41 +17,33 @@
  *
  */
 
-#ifndef BASEWINDOW_H
-#define BASEWINDOW_H
+#ifndef FRAMEBUFFERWINDOW_H
+#define FRAMEBUFFERWINDOW_H
 
 #include <list>
 #include <string>
 #include <map>
 #include <thread>
-// #include <vulkan.h>
 #include "Vector.h"
-
-#if ( !defined( BASEWINDOW_CPP) || defined( GE_EGL ) )
-#ifndef Display
-#define Display void
-#endif
-#ifndef XSetWindowAttributes
-#define XSetWindowAttributes void
-#endif
-#ifndef GLXFBConfig
-#define GLXFBConfig void*
-#endif
-#ifndef XVisualInfo
-#define XVisualInfo void
-#endif
-#endif
 
 namespace GE {
 
 class Instance;
 
-class BaseWindow
+class FramebufferWindow
 {
 public:
-	BaseWindow( Instance* instance, const std::string& title, int width, int height, uint32_t flags );
-	~BaseWindow();
+	FramebufferWindow( Instance* instance, const std::string& title, int width, int height, uint32_t flags );
+	~FramebufferWindow();
 
+	int OpenSystemFramebuffer( const std::string& devfile, bool reversed = false, bool raw = false );
+	void MapMemory( void* fb_pointer, int bpp );
+
+	void ClearRegion( uint32_t color, int x = 0, int y = 0, int w = -1, int h = -1 );
+
+	uint32_t* framebuffer();
+	bool reversed();
+	uint32_t bpp();
 	uint32_t width();
 	uint32_t height();
 	Vector2i& cursor();
@@ -62,36 +54,29 @@ public:
 	float fps() const;
 
 protected:
-	void pEventThread();
-
 	Instance* mInstance;
 	uint32_t mWidth;
 	uint32_t mHeight;
 	bool mHasResized;
 	uint64_t mWindow;
-	std::thread* mEventThread;
 	bool mKeys[512];
 	Vector2i mCursor;
 	Vector2i mCursorWarp;
 
-	std::list< void* > mWheelEvents;
+	uint32_t* mFramebuffer;
+	int32_t mBpp;
+	bool mReversed;
+	bool mFramebufferAllocated;
+
+	int64_t mSystemFbHandler;
 
 	float mFps;
 	int mFpsImages;
 	uint64_t mFpsTimer;
-
-protected://private:
-	Display* mDisplay;
-	int mScreen;
-	GLXFBConfig mFBConfig;
-	XVisualInfo* mVisualInfo;
-	uint64_t mColorMap;
-	XSetWindowAttributes* mWindowAttributes;
-	bool mClosing;
 };
 
 
 } // namespace GE
 
-#endif // BASEWINDOW_H
+#endif // FRAMEBUFFERWINDOW_H
  

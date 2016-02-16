@@ -35,10 +35,10 @@ extern "C" GE::Renderer* CreateRenderer( GE::Instance* instance ) {
 }
 
 static const char* vertex_shader_include =
-#if ( !defined( GE_ANDROID ) && !defined( GE_IOS ) )
-	"#version 140\n"
+#if ( !defined( GE_ANDROID ) && !defined( GE_IOS ) && !defined( GE_EGL ) )
+	"#version 130\n"
 #endif
-#if ( defined( GE_ANDROID ) || defined( GE_IOS ) )
+#if ( defined( GE_ANDROID ) || defined( GE_IOS ) || defined( GE_EGL ) )
 	"#define in attribute\n"
 	"#define out varying\n"
 #endif
@@ -60,16 +60,16 @@ static const char* vertex_shader_include =
 ;
 
 static const char* fragment_shader_include =
-#if ( !defined( GE_ANDROID ) && !defined( GE_IOS ) )
-	"#version 140\n"
+#if ( !defined( GE_ANDROID ) && !defined( GE_IOS ) && !defined( GE_EGL ) )
+	"#version 130\n"
 #endif
 	"precision highp float;\n"
 	"uniform sampler2D ge_Texture0;\n"
-#if ( defined( GE_ANDROID ) || defined( GE_IOS ) )
+#if ( defined( GE_ANDROID ) || defined( GE_IOS ) || defined( GE_EGL ) )
 	"#define in varying\n"
 	"#define texture texture2D\n"
 #endif
-#if ( defined( GE_ANDROID ) || defined( GE_IOS ) )
+#if ( defined( GE_ANDROID ) || defined( GE_IOS ) || defined( GE_EGL ) )
 	"#define ge_FragColor gl_FragColor\n"
 #else
 	"out vec4 ge_FragColor;\n"
@@ -84,6 +84,8 @@ OpenGLES20Renderer::OpenGLES20Renderer( Instance* instance )
 	, mMatrixObjects( 0 )
 	, mMatrixObjectsSize( 0 )
 	, mRenderMode( GL_TRIANGLES )
+	, mDepthTestEnabled( false )
+	, mBlendingEnabled( false )
 	, mShader( 0 )
 	, mVertexShader( 0 )
 	, mFragmentShader( 0 )
@@ -117,9 +119,9 @@ int OpenGLES20Renderer::LoadVertexShader( const void* data, size_t size )
 		glDeleteShader( mVertexShader );
 	}
 
-	const char* array[2] = { vertex_shader_include, (char*)data };
+	const char* array[] = { vertex_shader_include, (char*)data };
 	mVertexShader = glCreateShader( GL_VERTEX_SHADER );
-	glShaderSource( mVertexShader, 2, array, NULL );
+	glShaderSource( mVertexShader, sizeof(array)/sizeof(char*), array, NULL );
 // 	glShaderSource( mVertexShader, 1, (const char**)&data, NULL );
 	glCompileShader( mVertexShader );
 	char log[4096] = "";
@@ -127,6 +129,13 @@ int OpenGLES20Renderer::LoadVertexShader( const void* data, size_t size )
 	glGetShaderInfoLog( mVertexShader, logsize, &logsize, log );
 	gDebug() << "vertex compile : " << log << "\n";
 
+	return 0;
+}
+
+
+int OpenGLES20Renderer::LoadGeometryShader( const void* data, size_t size )
+{
+	gDebug() << "Warning : Geometry shader not supported by this backend !\n";
 	return 0;
 }
 
@@ -140,9 +149,9 @@ int OpenGLES20Renderer::LoadFragmentShader( const void* data, size_t size )
 
 	fDebug( data, size );
 
-	const char* array[2] = { fragment_shader_include, (char*)data };
+	const char* array[] = { fragment_shader_include, (char*)data };
 	mFragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
-	glShaderSource( mFragmentShader, 2, array, NULL );
+	glShaderSource( mFragmentShader, sizeof(array)/sizeof(char*), array, NULL );
 // 	glShaderSource( mFragmentShader, 1, (const char**)&data, NULL );
 	glCompileShader( mFragmentShader );
 	char log[4096] = "";
@@ -161,6 +170,19 @@ int OpenGLES20Renderer::LoadVertexShader( const std::string& file )
 	size_t sz = 0;
 	uint8_t* data = loadShader( file, &sz );
 	int ret = LoadVertexShader( data, sz );
+	mInstance->Free( data );
+
+	return ret;
+}
+
+
+int OpenGLES20Renderer::LoadGeometryShader( const std::string& file )
+{
+	mReady = false;
+
+	size_t sz = 0;
+	uint8_t* data = loadShader( file, &sz );
+	int ret = LoadGeometryShader( data, sz );
 	mInstance->Free( data );
 
 	return ret;
@@ -186,6 +208,29 @@ void OpenGLES20Renderer::setRenderMode( int mode )
 }
 
 
+void OpenGLES20Renderer::setDepthTestEnabled( bool en )
+{
+	mDepthTestEnabled = en;
+	if ( en ) {
+		glEnable( GL_DEPTH_TEST );
+	} else {
+		glDisable( GL_DEPTH_TEST );
+	}
+}
+
+
+void OpenGLES20Renderer::setBlendingEnabled(bool en)
+{
+	mBlendingEnabled = en;
+	if ( en ) {
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+	} else {
+		glDisable( GL_BLEND );
+	}
+}
+
+
 void OpenGLES20Renderer::createPipeline()
 {
 	if ( mShader ) {
@@ -195,12 +240,22 @@ void OpenGLES20Renderer::createPipeline()
 	glAttachShader( mShader, mVertexShader );
 	glAttachShader( mShader, mFragmentShader );
 
-	glBindAttribLocation( mShader, 0, "ge_VertexTexcoord" );
-	glBindAttribLocation( mShader, 1, "ge_VertexColor" );
-	glBindAttribLocation( mShader, 2, "ge_VertexNormal" );
-	glBindAttribLocation( mShader, 3, "ge_VertexPosition" );
+// 	glBindAttribLocation( mShader, 0, "ge_VertexTexcoord" );
+// 	glBindAttribLocation( mShader, 1, "ge_VertexColor" );
+// 	glBindAttribLocation( mShader, 2, "ge_VertexNormal" );
+// 	glBindAttribLocation( mShader, 3, "ge_VertexPosition" );
 
 	glLinkProgram( mShader );
+
+	mVertexTexcoordID = glGetAttribLocation( mShader, "ge_VertexTexcoord" );
+	mVertexColorID = glGetAttribLocation( mShader, "ge_VertexColor" );
+	mVertexNormalID = glGetAttribLocation( mShader, "ge_VertexNormal" );
+	mVertexPositionID = glGetAttribLocation( mShader, "ge_VertexPosition" );
+
+	char log[4096] = "";
+	int logsize = 4096;
+	glGetProgramInfoLog( mShader, logsize, &logsize, log );
+	gDebug() << "program compile : " << log << "\n";
 
 	mMatrixProjectionID = glGetUniformLocation( mShader, "ge_ProjectionMatrix" );
 	mMatrixViewID = glGetUniformLocation( mShader, "ge_ViewMatrix" );
@@ -309,15 +364,14 @@ void OpenGLES20Renderer::Draw()
 	glUniformMatrix4fv( mMatrixProjectionID, 1, GL_FALSE, mMatrixProjection->data() );
 	glUniformMatrix4fv( mMatrixViewID, 1, GL_FALSE, mMatrixView->data() );
 
-
-	glEnableVertexAttribArray( 0 );
-	glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( 0 ) );
-	glEnableVertexAttribArray( 1 );
-	glVertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 ) );
-	glEnableVertexAttribArray( 2 );
-	glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 ) );
-	glEnableVertexAttribArray( 3 );
-	glVertexAttribPointer( 3, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 + sizeof( float ) * 4 ) );
+	glEnableVertexAttribArray( mVertexTexcoordID );
+	glVertexAttribPointer( mVertexTexcoordID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( 0 ) );
+	glEnableVertexAttribArray( mVertexColorID );
+	glVertexAttribPointer( mVertexColorID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 ) );
+	glEnableVertexAttribArray( mVertexNormalID );
+	glVertexAttribPointer( mVertexNormalID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 ) );
+	glEnableVertexAttribArray( mVertexPositionID );
+	glVertexAttribPointer( mVertexPositionID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 + sizeof( float ) * 4 ) );
 
 	uint32_t iIndices = 0;
 	for ( size_t i = 0; i < mObjects.size(); i++ ) {

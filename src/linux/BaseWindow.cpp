@@ -212,7 +212,7 @@ void BaseWindow::SwapBuffersBase()
 
 	int unused, mx, my;
 	uint64_t unwin;
-	if ( XQueryPointer( mDisplay, mWindow, &unwin, &unwin, &unused, &unused, &mx, &my, (uint32_t*)&unused ) ) {
+	if ( XQueryPointer( mDisplay, mWindow, (::Window*)&unwin, (::Window*)&unwin, &unused, &unused, &mx, &my, (uint32_t*)&unused ) ) {
 		if ( false ) {
 			mCursorWarp.x = mx - mWidth / 2;
 			mCursorWarp.y = my - mHeight / 2;

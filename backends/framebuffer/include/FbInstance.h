@@ -1,5 +1,5 @@
 /*
- * The GammaEngine Library 2.0 is a multiplatform OpenGL43-based game engine
+ * The GammaEngine Library 2.0 is a multiplatform Fb-based game engine
  * Copyright (C) 2015  Adrien Aubry <dridri85@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,37 +17,31 @@
  *
  */
 
-#ifndef VULKANINSTANCE_H
-#define VULKANINSTANCE_H
+#ifndef FRAMEBUFFERINSTANCE_H
+#define FRAMEBUFFERINSTANCE_H
 
-#ifndef _WIN32
-#define GL_GLEXT_PROTOTYPES
-#endif
-#include <GL/gl.h>
-#include <GL/glext.h>
 #include <string.h>
 
-// Windows tricks
-#undef CreateWindow
-
-#include <string>
 #include "Instance.h"
+#include "Image.h"
+#include "FbWindow.h"
+#include <map>
+#include <string>
+#include <mutex>
 
 namespace GE {
-	template <typename T> class ProxyWindow;
-	class BaseWindow;
-	typedef ProxyWindow< BaseWindow > Window;
 	class Renderer;
 	class Vertex;
 	class Object;
+// 	class Image;
 }
 using namespace GE;
 
-class OpenGL43Instance : public Instance
+class FbInstance : public Instance
 {
 public:
-	OpenGL43Instance( void* pBackend, const char* appName, uint32_t appVersion );
-	virtual ~OpenGL43Instance(){}
+	FbInstance( void* pBackend, const char* appName, uint32_t appVersion );
+	virtual ~FbInstance(){}
 
 	virtual int EnumerateGpus();
 	virtual Instance* CreateDevice( int devid, int queueCount = 1 );
@@ -56,7 +50,12 @@ public:
 	virtual void UpdateImageData( Image* image, uint64_t ref );
 
 	void AffectVRAM( int64_t sz );
+
+	FbWindow* boundWindow() const;
+	void BindWindow( FbWindow* win );
+
 private:
+	FbWindow* mBoundWindow;
 };
 
-#endif // VULKANINSTANCE_H
+#endif // FRAMEBUFFERINSTANCE_H

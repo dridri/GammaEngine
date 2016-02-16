@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef OPENGL43RENDERER_H
-#define OPENGL43RENDERER_H
+#ifndef FRAMEBUFFERRENDERER_H
+#define FRAMEBUFFERRENDERER_H
 
 #include <vector>
 #include "Renderer.h"
@@ -48,11 +48,11 @@ typedef struct DrawArraysIndirectCommand {
 	uint32_t baseInstance;
 } DrawArraysIndirectCommand;
 
-class OpenGL43Renderer : public Renderer
+class FbRenderer : public Renderer
 {
 public:
-	OpenGL43Renderer( Instance* instance = nullptr );
-	~OpenGL43Renderer();
+	FbRenderer( Instance* instance = nullptr );
+	~FbRenderer();
 
 	virtual int LoadVertexShader( const std::string& file );
 	virtual int LoadVertexShader( const void* data, size_t size );
@@ -83,39 +83,20 @@ public:
 	virtual void uniformUpload( const uintptr_t id, const Matrix& v );
 
 protected:
-	uint8_t* loadShader( const std::string& filename, size_t* sz = 0 );
-	void createPipeline();
-
-	bool mReady;
 	Instance* mInstance;
 
 	Matrix* mMatrixProjection;
 	Matrix* mMatrixView;
 	float* mMatrixObjects;
+	uint32_t mMatrixObjectsSize;
 	std::vector< Object* > mObjects;
 	std::vector< Light* > mLights;
-	uint32_t mTotalObjectsInstances;
 
 	int mRenderMode;
 	bool mDepthTestEnabled;
 	bool mBlendingEnabled;
 
-	uint32_t mShader;
-	uint32_t mVertexShader;
-	uint32_t mGeometryShader;
-	uint32_t mFragmentShader;
-
-	uint32_t mIBO;
-	uint32_t mVBO;
-	uint32_t mVAO;
-
-	uint32_t mCommandBuffer;
-	uint32_t mMatrixProjectionID;
-	uint32_t mMatrixViewID;
-	uint32_t mMatrixObjectID;
-	uint32_t mTextureBaseID;
-	uint32_t mTexturesID;
-	int32_t mFloatTimeID;
+	static bool s2DActive;
 };
 
-#endif // OPENGL43RENDERER_H
+#endif // FRAMEBUFFERRENDERER_H

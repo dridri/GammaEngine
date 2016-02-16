@@ -71,6 +71,12 @@ void Camera::LookAt( const Vector3f& pos, const Vector3f& center )
 }
 
 
+void Camera::setPosition( const Vector3f& pos )
+{
+	mPosition = pos;
+}
+
+
 void Camera::setInertia( const float inertia )
 {
 	mInertiaFactor = inertia;
@@ -197,6 +203,12 @@ void Camera::Update()
 		mLookPoint.x = mPosition.x + rtemp * std::cos( mRotH );
 		mLookPoint.y = mPosition.y + rtemp * std::sin( mRotH );
 	}
+}
+
+
+Vector2f Camera::rotation()
+{
+	return Vector2f( mRotH, mRotV );
 }
 
 

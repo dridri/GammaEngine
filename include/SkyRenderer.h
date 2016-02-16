@@ -42,6 +42,8 @@ public:
 	void AddLight( Light* light );
 	void Render( Camera* cam );
 
+	Renderer* renderer() const { return mRenderer; }
+
 	void AssociateSize( Window* window ) { mAssociatedWindow = window; };
 
 protected:

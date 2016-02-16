@@ -35,13 +35,13 @@ static uint32_t geGetNextPower2( uint32_t width )
 }
 
 
-extern "C" GE::Instance* CreateInstance( const char* appName, uint32_t appVersion ) {
-	return new OpenGLES20Instance( appName, appVersion );
+extern "C" GE::Instance* CreateInstance( void* pBackend, const char* appName, uint32_t appVersion ) {
+	return new OpenGLES20Instance( pBackend, appName, appVersion );
 }
 
 
-OpenGLES20Instance::OpenGLES20Instance( const char* appName, uint32_t appVersion )
-	: Instance()
+OpenGLES20Instance::OpenGLES20Instance( void* pBackend, const char* appName, uint32_t appVersion )
+	: Instance( pBackend )
 	, mImageReferences( decltype(mImageReferences)() )
 {
 	fDebug( appName, appVersion );

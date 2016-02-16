@@ -56,9 +56,14 @@ public:
 
 	virtual int LoadVertexShader( const std::string& file );
 	virtual int LoadVertexShader( const void* data, size_t size );
+	virtual int LoadGeometryShader( const std::string& file );
+	virtual int LoadGeometryShader( const void* data, size_t size );
 	virtual int LoadFragmentShader( const std::string& file );
 	virtual int LoadFragmentShader( const void* data, size_t size );
+
 	virtual void setRenderMode( int mode );
+	virtual void setDepthTestEnabled( bool en );
+	virtual void setBlendingEnabled( bool en );
 
 	virtual void AddObject( Object* obj );
 	virtual void AddLight( Light* light );
@@ -92,6 +97,8 @@ protected:
 	std::vector< Light* > mLights;
 
 	int mRenderMode;
+	bool mDepthTestEnabled;
+	bool mBlendingEnabled;
 
 	uint32_t mShader;
 	uint32_t mVertexShader;
@@ -100,6 +107,10 @@ protected:
 	uint32_t mIBO;
 	uint32_t mVBO;
 
+	int32_t mVertexTexcoordID;
+	int32_t mVertexColorID;
+	int32_t mVertexNormalID;
+	int32_t mVertexPositionID;
 	int32_t mMatrixProjectionID;
 	int32_t mMatrixViewID;
 	int32_t mMatrixObjectID;

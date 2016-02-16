@@ -492,10 +492,13 @@ void OpenGL43DeferredRenderer::Render()
 	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixProjectionID );
 	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixProjection->data() );
 
+	glEnable( GL_BLEND );
+
 	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, mCommandBuffer );
 	mRenderMutex.lock();
 	glBindVertexArray( mVAOs[mLightsDataIDi] );
-	glDisable( GL_DEPTH_TEST );
+// 	glDisable( GL_DEPTH_TEST );
+	glEnable( GL_DEPTH_TEST );
 	glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr );
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE );
 	glMultiDrawElementsIndirect( GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 1, 0 );

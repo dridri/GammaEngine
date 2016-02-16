@@ -46,11 +46,13 @@ public:
 	void WalkRight( float speed = 1.0f );
 	void RotateH( const float v, float speed = 1.0f );
 	void RotateV( const float v, float speed = 1.0f );
+	void setPosition( const Vector3f& pos );
 	void setInertia( const float inertia );
 	void setRotationInertia( const float inertia );
 
 	const Vector3f& position();
 	const Vector3f& lookPoint();
+	Vector2f rotation();
 	Vector3f direction();
 	float* data();
 

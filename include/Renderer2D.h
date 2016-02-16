@@ -31,7 +31,9 @@ class Camera;
 class Matrix;
 class Image;
 class Font;
-class Window;
+template <typename T> class ProxyWindow;
+class BaseWindow;
+typedef ProxyWindow< BaseWindow > Window;
 
 class Renderer2D
 {
@@ -58,6 +60,8 @@ public:
 	virtual void DrawLine( int x0, int y0, uint32_t color0, int x1, int y1, uint32_t color1 ) = 0;
 
 	virtual void setDepthTestEnabled( bool en ) = 0;
+	virtual void setBlendingEnabled( bool en ) = 0;
+
 	virtual Matrix* projectionMatrix() = 0;
 	virtual Matrix* viewMatrix() = 0;
 

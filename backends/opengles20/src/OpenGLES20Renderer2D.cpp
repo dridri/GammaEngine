@@ -41,30 +41,31 @@
 extern "C" GE::Renderer2D* CreateRenderer2D( GE::Instance* instance, uint32_t width, uint32_t height ) {
 	return new OpenGLES20Renderer2D( instance, width, height );
 }
-static const char vertices_shader_base[] = GLSL(
-	out vec4 ge_Color;
-	out vec2 ge_TextureCoord;
 
-	void main()
-	{
-		ge_Color = ge_VertexColor;
-		ge_TextureCoord = ge_VertexTexcoord.xy;
-		ge_Position = ge_ProjectionMatrix * ge_ViewMatrix * ge_ObjectMatrix * vec4(ge_VertexPosition.xy, 0.0, 1.0);
-	}
-);
+static const char vertices_shader_base[] =
+"	out vec4 ge_Color;\n"
+"	out vec2 ge_TextureCoord;\n"
+"\n"
+"	void main()\n"
+"	{\n"
+"		ge_Color = ge_VertexColor;\n"
+"		ge_TextureCoord = ge_VertexTexcoord.xy;\n"
+"		ge_Position = ge_ProjectionMatrix * ge_ViewMatrix * ge_ObjectMatrix * vec4(ge_VertexPosition.xy, 0.0, 1.0);\n"
+"	}\n"
+;
 
-static const char fragment_shader_base[] = GLSL(
-	in vec4 ge_Color;
-	in vec2 ge_TextureCoord;
-
-	void main()
-	{
-		ge_FragColor = ge_Color * texture( ge_Texture0, ge_TextureCoord.xy );
-/*		if ( ge_FragColor.a <= 0.2 ) {
-			discard;
-		}*/
-	}
-);
+static const char fragment_shader_base[] =
+"	in vec4 ge_Color;\n"
+"	in vec2 ge_TextureCoord;\n"
+"\n"
+"	void main()\n"
+"	{\n"
+"		ge_FragColor = ge_Color * texture( ge_Texture0, ge_TextureCoord.xy );\n"
+"/*		if ( ge_FragColor.a <= 0.2 ) {\n"
+"			discard;\n"
+"		}*/\n"
+"	}\n"
+;
 
 
 OpenGLES20Renderer2D::OpenGLES20Renderer2D( Instance* instance, uint32_t width, uint32_t height )
@@ -73,8 +74,9 @@ OpenGLES20Renderer2D::OpenGLES20Renderer2D( Instance* instance, uint32_t width, 
 	, m2DReady( false )
 	, mWidth( width )
 	, mHeight( height )
-	, mDepthTestEnabled( false )
 {
+	mBlendingEnabled = true;
+
 	mMatrixProjection->Orthogonal( 0.0, mWidth, mHeight, 0.0, -2049.0, 2049.0 );
 	mMatrixView->Identity();
 
@@ -94,7 +96,13 @@ OpenGLES20Renderer2D::~OpenGLES20Renderer2D()
 
 void OpenGLES20Renderer2D::setDepthTestEnabled( bool en )
 {
-	mDepthTestEnabled = en;
+	OpenGLES20Renderer::setDepthTestEnabled( en );
+}
+
+
+void OpenGLES20Renderer2D::setBlendingEnabled (bool en )
+{
+	OpenGLES20Renderer::setRenderMode( en );
 }
 
 
@@ -183,19 +191,22 @@ void OpenGLES20Renderer2D::Render( Image* image, int mode, int start, int n, con
 
 //		glUniformMatrix4fv( mMatrixViewID, 1, GL_FALSE, mMatrixView->constData() );
 
-		glEnableVertexAttribArray( 0 );
-		glEnableVertexAttribArray( 1 );
-		glEnableVertexAttribArray( 2 );
-		glEnableVertexAttribArray( 3 );
+		glEnableVertexAttribArray( mVertexTexcoordID );
+		glEnableVertexAttribArray( mVertexColorID );
+		glEnableVertexAttribArray( mVertexNormalID );
+		glEnableVertexAttribArray( mVertexPositionID );
 
 		if ( mDepthTestEnabled ) {
 			glEnable( GL_DEPTH_TEST );
 		} else {
 			glDisable( GL_DEPTH_TEST );
 		}
-	//	glDisable( GL_BLEND );
-		glEnable( GL_BLEND );
-		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+		if ( mBlendingEnabled ) {
+			glEnable( GL_BLEND );
+			glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+		} else {
+			glDisable( GL_BLEND );
+		}
 
 		s2DActive = true;
 	}
@@ -204,9 +215,9 @@ void OpenGLES20Renderer2D::Render( Image* image, int mode, int start, int n, con
 	glUniformMatrix4fv( mMatrixObjectID, 1, GL_FALSE, matrix.constData() );
 
 	glBindTexture( GL_TEXTURE_2D, image->serverReference( mInstance ) );
-	glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex2D ), (void*)( 0 ) );
-	glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*)( sizeof( uint32_t ) ) );
-	glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*)( sizeof( uint32_t ) + sizeof( float ) * 2 ) );
+	glVertexAttribPointer( mVertexColorID, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex2D ), (void*)( 0 ) );
+	glVertexAttribPointer( mVertexTexcoordID, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*)( sizeof( uint32_t ) ) );
+	glVertexAttribPointer( mVertexPositionID, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*)( sizeof( uint32_t ) + sizeof( float ) * 2 ) );
 
 	glDrawArrays( mode, start, n );
 

@@ -47,7 +47,7 @@ extern "C" GE::Window* CreateWindow( GE::Instance* instance, const std::string& 
 }
 
 OpenGL43Window::OpenGL43Window( Instance* instance, const std::string& title, int width, int height, Flags flags )
-	: Window( instance, title, width, height, flags )
+	: GE::Window( instance, title, width, height, flags )
 	, mClearColor( 0 )
 {
 	// TODO : MSAA

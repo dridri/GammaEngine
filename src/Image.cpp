@@ -226,7 +226,19 @@ void Image::Resize( uint32_t width, uint32_t height )
 	for ( uint32_t j = 0; j < height; j++ ) {
 		for ( uint32_t i = 0; i < width; i++ ) {
 			// TODO / TBD : Linear lookup ?
-			data[ j * width + i ] = mData[ ( j * mHeight / height * width ) + ( i * mWidth / width ) ];
+// 			if ( j < 1 or i < 1 or j >= height - 1 or i >= width - 1 ) {
+				data[ j * width + i ] = mData[ ( j * mHeight / height * mWidth ) + ( i * mWidth / width ) ];
+// 			} else {
+// 				uint32_t px_n1_p0 = mData[ ( ( j * mHeight / height - 1 ) * mWidth ) + ( i * mWidth / width ) + 0 ];
+// 				uint32_t px_p0_n1 = mData[ ( ( j * mHeight / height + 0 ) * mWidth ) + ( i * mWidth / width ) - 1 ];
+// 				uint32_t px_p1_p0 = mData[ ( ( j * mHeight / height + 1 ) * mWidth ) + ( i * mWidth / width ) + 0 ];
+// 				uint32_t px_p0_p1 = mData[ ( ( j * mHeight / height + 0 ) * mWidth ) + ( i * mWidth / width ) + 1 ];
+// 				uint32_t px_p0_p0 = mData[ ( j * mHeight / height * mWidth ) + ( i * mWidth / width ) ];
+// 				uint64_t ret_0 = ( px_n1_p0 + px_p0_n1 ) / 2;
+// 				uint64_t ret_1 = ( px_p1_p0 + px_p0_p1 ) / 2;
+// 				uint64_t ret_2 = ( ret_0 + ret_1 ) / 2;
+// 				data[ j * width + i ] = (uint32_t)( ( px_p0_p0 + ret_2 ) / 2 );
+// 			}
 		}
 	}
 

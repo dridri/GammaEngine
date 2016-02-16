@@ -17,42 +17,57 @@
  *
  */
 
-#ifndef WINDOW_H
-#define WINDOW_H
+#ifndef BASEWINDOW_H
+#define BASEWINDOW_H
 
+#include <list>
 #include <string>
-#include "BaseWindow.h"
+#include <map>
+#include <thread>
+#include <EGL/egl.h>
+#include "Vector.h"
 
 namespace GE {
 
 class Instance;
 
-template <typename T > class ProxyWindow : public T
+class BaseWindow
 {
 public:
-	typedef enum {
-		Nil = 0,
-		Resizable = 1,
-		Fullscreen = 2,
-	} Flags;
-	ProxyWindow( Instance* instance, const std::string& title, int width, int height, ProxyWindow::Flags flags = Nil ) : T( instance, title, width, height, (uint32_t)flags ) {}
-	virtual ~ProxyWindow(){};
+	BaseWindow( Instance* instance, const std::string& title, int width, int height, uint32_t flags );
+	~BaseWindow();
+	void SetNativeWindow( EGLNativeWindowType win );
 
-	virtual void Clear( uint32_t color = 0xFF000000 ) = 0;
-	virtual void BindTarget() = 0;
-	virtual void SwapBuffers() = 0;
+	uint32_t width();
+	uint32_t height();
+	Vector2i& cursor();
+	Vector2i& cursorWarp();
 
-	virtual uint64_t colorImage() = 0;
+	void WaitVSync( bool en );
+	void SwapBuffersBase();
+	float fps() const;
 
-	virtual void ReadKeys( bool* keys ) = 0;
-	virtual uint64_t CreateSharedContext() = 0;
-	virtual void BindSharedContext( uint64_t ctx ) = 0;
+protected:
+	Instance* mInstance;
+	uint32_t mWidth;
+	uint32_t mHeight;
+	bool mHasResized;
+	uint64_t mWindow;
+	bool mKeys[512];
+	Vector2i mCursor;
+	Vector2i mCursorWarp;
+
+	float mFps;
+	int mFpsImages;
+	uint64_t mFpsTimer;
+
+	EGLDisplay mEGLDisplay;
+	EGLConfig mEGLConfig;
+	EGLContext mEGLContext;
 };
-
-typedef ProxyWindow< BaseWindow > Window;
 
 
 } // namespace GE
 
-#endif // WINDOW_H
+#endif // BASEWINDOW_H
  

@@ -28,7 +28,9 @@
 
 namespace GE {
 
-class Window;
+template <typename T> class ProxyWindow;
+class BaseWindow;
+typedef ProxyWindow< BaseWindow > Window;
 class Renderer;
 class Renderer2D;
 class DeferredRenderer;
@@ -40,7 +42,7 @@ class Instance
 {
 public:
 // 	Instance( const char* appName, uint32_t appVersion, bool easy_instance = true );
-	Instance() : mDevId(0), mGpuCount(0), mGpus{0}, mDevices{0}, mQueues{0}, mFences{0}, mCpuRamCounter(0), mGpuRamCounter(0) {}
+	Instance( void* pBackend ) : mBackend( pBackend ), mDevId(0), mGpuCount(0), mGpus{0}, mDevices{0}, mQueues{0}, mFences{0}, mCpuRamCounter(0), mGpuRamCounter(0) {}
 	virtual ~Instance(){}
 	void Exit( int retcode = 0 );
 
@@ -66,6 +68,8 @@ public:
 
 	void AffectRAM( int64_t sz );
 
+	void* backend();
+
 	uint64_t gpu();
 	uint64_t device();
 	uint64_t queue();
@@ -82,16 +86,15 @@ public:
 
 	static Instance* baseInstance();
 	static uint64_t baseThread();
-	static void* backend();
 
 protected:
 	static Instance* mBaseInstance;
 	static uint64_t mBaseThread;
-	static void* sBackend;
 	static std::string sLocale;
 	static std::string sUserName;
 	static std::string sUserEmail;
 
+	void* mBackend;
 	int mDevId;
 	uint32_t mGpuCount;
 	uint64_t mGpus[4];

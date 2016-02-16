@@ -67,7 +67,6 @@ using namespace GE;
 
 
 Instance* Instance::mBaseInstance = nullptr;
-void* Instance::sBackend = nullptr;
 uint64_t Instance::mBaseThread = 0;
 
 std::string Instance::sLocale = "";
@@ -88,12 +87,12 @@ uint64_t Instance::baseThread()
 
 void* Instance::backend()
 {
-	return sBackend;
+	return mBackend;
 }
 
 #ifdef GE_STATIC_BACKEND
 
-extern "C" Instance* CreateInstance( const char*, uint32_t );
+extern "C" Instance* CreateInstance( void*, const char*, uint32_t );
 extern "C" Window* CreateWindow( Instance*, const std::string&, int, int, int );
 extern "C" Renderer* CreateRenderer( Instance* );
 extern "C" Renderer2D* CreateRenderer2D( Instance*, uint32_t, uint32_t );
@@ -105,7 +104,7 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 {
 	if ( easy_instance ) {
 		if ( !mBaseInstance ) {
-			mBaseInstance = CreateInstance( appName, appVersion );
+			mBaseInstance = CreateInstance( nullptr, appName, appVersion );
 			mBaseThread = (uint64_t)pthread_self();
 		}
 		Instance* ret = mBaseInstance->CreateDevice( 0, 1 );
@@ -114,7 +113,7 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 		}
 		return ret;
 	}
-	return CreateInstance( appName, appVersion );
+	return CreateInstance( nullptr, appName, appVersion );
 }
 
 Window* Instance::CreateWindow( const std::string& title, int width, int height, int flags )
@@ -156,60 +155,60 @@ Object* Instance::LoadObject( const std::string& filename )
 
 Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_instance, const std::string& backend_file )
 {
-#ifdef GE_LINUX
+	void* local_backend = nullptr;
+
+#if ( defined( GE_LINUX ) && !defined( GE_EGL ) )
 	XInitThreads();
 #endif
 
-	if ( !sBackend ) {
 #ifdef GE_WIN32
-		std::string lib_suffix = ".dll";
+	std::string lib_suffix = ".dll";
 #else
-		std::string lib_suffix = ".so";
+	std::string lib_suffix = ".so";
 #endif
 #if ( defined( GE_ANDROID ) || defined( GE_IOS ) )
-		std::string backend_lib = "opengles20";
+	std::string backend_lib = "opengles20";
 #else
 // 		std::string backend_lib = "vulkan";
-		std::string backend_lib = "opengl43";
+	std::string backend_lib = "opengl43";
 #endif
-		std::string prefixes[10] = {
-			"backend_",
-			"backends/",
-			"gammaengine/backend_",
-			"gammaengine/backends/",
-			"/usr/local/lib/backend_",
-			"/usr/local/lib/gammaengine/backend_",
-			"/usr/local/lib/gammaengine/backends/",
-			"/usr/lib/backend_",
-			"/usr/lib/gammaengine/backend_",
-			"/usr/lib/gammaengine/backends/",
-		};
-		if ( backend_file != "" ) {
-			backend_lib = backend_file;
-		}
-		int i = 0;
-		for ( i = 0; i < 10 && !sBackend; i++ ) {
-			sBackend = LoadLib( prefixes[i] + backend_lib + lib_suffix );
-			if ( sBackend == nullptr ) {
+	std::string prefixes[10] = {
+		"backend_",
+		"backends/",
+		"gammaengine/backend_",
+		"gammaengine/backends/",
+		"/usr/local/lib/backend_",
+		"/usr/local/lib/gammaengine/backend_",
+		"/usr/local/lib/gammaengine/backends/",
+		"/usr/lib/backend_",
+		"/usr/lib/gammaengine/backend_",
+		"/usr/lib/gammaengine/backends/",
+	};
+	if ( backend_file != "" ) {
+		backend_lib = backend_file;
+	}
+	int i = 0;
+	for ( i = 0; i < 10 && !local_backend; i++ ) {
+		local_backend = LoadLib( prefixes[i] + backend_lib + lib_suffix );
+		if ( local_backend == nullptr ) {
 #ifdef GE_WIN32
-				gDebug() << "Backend ( " << backend_lib << " ) loading error : " << ( prefixes[i] + backend_lib + lib_suffix ) << " : " << LibError() << "\n";
+			gDebug() << "Backend ( " << backend_lib << " ) loading error : " << ( prefixes[i] + backend_lib + lib_suffix ) << " : " << LibError() << "\n";
 #else
-				gDebug() << "Backend ( " << backend_lib << " ) loading error : " << LibError() << "\n";
+			gDebug() << "Backend ( " << backend_lib << " ) loading error : " << LibError() << "\n";
 #endif
-			}
-		}
-		if ( sBackend == nullptr ) {
-			exit(0);
-		} else {
-			gDebug() << "Backend file " << prefixes[--i] << backend_lib << lib_suffix << " loaded !\n";
 		}
 	}
+	if ( local_backend == nullptr ) {
+		exit(0);
+	} else {
+		gDebug() << "Backend file " << prefixes[--i] << backend_lib << lib_suffix << " loaded !\n";
+	}
 
-	typedef Instance* (*f_type)( const char*, uint32_t );
-	f_type fCreateInstance = (f_type)SymLib( backend(), "CreateInstance" );
+	typedef Instance* (*f_type)( void*, const char*, uint32_t );
+	f_type fCreateInstance = (f_type)SymLib( local_backend, "CreateInstance" );
 	if ( easy_instance ) {
 		if ( !mBaseInstance ) {
-			mBaseInstance = fCreateInstance( appName, appVersion );
+			mBaseInstance = fCreateInstance( local_backend, appName, appVersion );
 			mBaseThread = pthread_self();
 		}
 		Instance* ret = mBaseInstance->CreateDevice( 0, 1 );
@@ -218,7 +217,7 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 		}
 		return ret;
 	}
-	return fCreateInstance( appName, appVersion );
+	return fCreateInstance( local_backend, appName, appVersion );
 }
 
 

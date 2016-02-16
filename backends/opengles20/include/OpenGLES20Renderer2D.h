@@ -38,6 +38,8 @@ public:
 	~OpenGLES20Renderer2D();
 
 	virtual void setDepthTestEnabled( bool en );
+	virtual void setBlendingEnabled( bool en );
+
 	virtual Matrix* projectionMatrix();
 	virtual Matrix* viewMatrix();
 
@@ -70,7 +72,6 @@ protected:
 	uint32_t mWidth;
 	uint32_t mHeight;
 	Image* mTextureWhite;
-	bool mDepthTestEnabled;
 };
 
 #endif // OPENGLES20RENDERER2D_H

@@ -37,100 +37,126 @@ namespace GE {
 class Debug
 {
 public:
-	Debug();
-	~Debug();
-
-
-	template<typename T> Debug& operator<<( T t )
-	{
-		std::stringstream ss;
-		ss << t;
-		log( ss.str() );
-		if ( mWriteFile ) {
-			// TODO
+	Debug() {
+	}
+	~Debug() {
+		if ( sEnabled ) {
+			log( mSS.str() + "\n" );
 		}
+	}
+	template<typename T> Debug& operator<<( const T& t ) {
+		mSS << t;
 		return *this;
 	}
 
-	static void StoreLog( bool st = false ) { mStoreLog = st; }
+	static bool enabled() { return sEnabled; }
+	static bool showFilename() { return sFilename; }
+	static bool showLineNumber() { return sLineNumber; }
+	static void setEnabled( bool en ) { sEnabled = en; }
+	static void setShowLineNumber( bool en ) { sLineNumber = en; }
+	static void setShowFilename( bool en ) { sFilename = en; }
+	static void setStoreLog( bool st = false ) { mStoreLog = st; }
+
 	static const std::string& DumpLog() { return mLog; }
 	static uint64_t GetTicks();
 
 private:
 	static void log( const std::string& s );
-	bool mWriteFile;
-	static bool mStoreLog;
 	static std::string mLog;
+	std::stringstream mSS;
+	static bool sEnabled;
+	static bool sLineNumber;
+	static bool sFilename;
+	static bool mStoreLog;
 	static std::mutex mLogMutex;
 };
+
 
 #ifndef __DBG_CLASS
 static inline std::string className(const std::string& prettyFunction)
 {
-	size_t colons = prettyFunction.find("::");
-// 	if ( prettyFunction.find( "GE::" ) ) {
-// 		colons += 2 + prettyFunction.substr(colons + 2).find( "::" );
-// 	}
+	size_t parenthesis = prettyFunction.find("(");
+	size_t colons = prettyFunction.substr( 0, parenthesis ).rfind("::");
 	if (colons == std::string::npos)
 		return "<none>";
 	size_t begin = prettyFunction.substr(0,colons).rfind(" ") + 1;
 	size_t end = colons - begin;
-	return prettyFunction.substr(begin,end);
+	return "\x1B[32m" + prettyFunction.substr(begin,end) + "\x1B[0m";
 }
-// using namespace GE;
 
 #pragma GCC system_header // HACK Disable unused-function warnings
 static std::string self_thread() {
-	if ( (uint64_t)pthread_self() != Instance::baseThread() ) {
-		std::stringstream ret;
-		ret << "[0x" << std::hex << pthread_self() << std::dec << "] ";
-		return ret.str();
-	}
-	return "";
+	std::stringstream ret;
+	char name[128];
+	pthread_getname_np( pthread_self(), name, sizeof(name)-1 );
+	ret << "\x1B[33m" << "[" << name << "] " << "\x1B[0m";
+	return ret.str();
 }
 
 #define __CLASS_NAME__ className(__PRETTY_FUNCTION__)
-
-#define gDebug() Debug() << self_thread() << __CLASS_NAME__ << "::" << __FUNCTION__ << "() "
-// #define fDebug( x ) Debug() << __CLASS_NAME__ << "::" << __FUNCTION__ << "( " << x << " )\n"
+#define __FUNCTION_NAME__ ( std::string("\x1B[94m") + __FUNCTION__ + "\x1B[0m" )
 
 #pragma GCC system_header // HACK Disable unused-function warnings
-static void fDebug_base( const char* end, bool f ) {
-	Debug() << " " << end;
+static void fDebug_base( std::stringstream& out, const char* end, bool f ) {
+	out << " " << end;
 }
 
-template<typename Arg1, typename... Args> static void fDebug_base( const char* end, bool first, const Arg1& arg1, const Args&... args ) {
+template<typename Arg1, typename... Args> static void fDebug_base( std::stringstream& out, const char* end, bool first, const Arg1& arg1, const Args&... args ) {
 	char* type = abi::__cxa_demangle(typeid(arg1).name(), nullptr, nullptr, nullptr);
 	char cap = 0;
+	std::string color = "\x1B[0m";
 	if ( strstr( type, "char" ) ) {
-		if ( strstr( type, "*" ) || ( strstr( type, "[" ) && strstr( type, "]" ) ) ) {
+		if ( strstr( type, "*" ) || ( strstr( type, "[" ) && strstr( type, "]" ) ) || strstr( type, "string" ) ) {
 			cap = '\"';
+			color = "\x1B[31m";
 		} else {
 			cap = '\'';
+			color = "\x1B[31m";
 		}
 	}
 	free(type);
 
-	if (!first ) {
-		Debug() << ", ";
+	std::stringstream arg_ss;
+	arg_ss << arg1;
+	if ( arg_ss.str()[0] >= '0' && arg_ss.str()[0] <= '9' ) {
+		color = "\x1B[36m";
 	}
-// 	Debug() << "[" << type << "]";
-	if ( cap ) Debug() << cap;
-	Debug() << arg1;
-	if ( cap ) Debug() << cap;
-	fDebug_base( end, false, args... );
+
+	if (!first ) {
+		out << ", ";
+	}
+	std::stringstream ss;
+	ss << color;
+	if ( cap ) ss << cap;
+	ss << arg_ss.str();
+	if ( cap ) ss << cap;
+	ss << "\x1B[0m";
+	out << ss.str();
+	fDebug_base( out, end, false, args... );
 }
 
-#define fDebug( args... ) Debug() << self_thread() << __CLASS_NAME__ << "::" << __FUNCTION__ << "( "; fDebug_base( ")\n", true, args )
-#define fDebug0() Debug() << self_thread() << __CLASS_NAME__ << "::" << __FUNCTION__ << "()\n"
+#pragma GCC system_header // HACK Disable unused-function warnings
+template<typename... Args> static std::string fDebug_top( const Args&... args ) {
+	if ( not Debug::enabled() ) {
+		return "";
+	}
+	std::stringstream out;
+	if ( sizeof...(args) == 0 ) {
+		out << ")";
+	} else {
+		out << " ";
+		fDebug_base( out, ")", true, args... );
+	}
+	return out.str();
+}
 
-#define aDebug( name, args... ) Debug() << self_thread() << __CLASS_NAME__ << "::" << __FUNCTION__ << " " << name << " = { "; fDebug_base( "}\n", true, args )
+#define gDebug() Debug() << self_thread() << (Debug::showFilename() ? (std::string(__FILE__)+":") : "") << (Debug::showLineNumber() ? (std::to_string(__LINE__)+": ") : "") << __CLASS_NAME__ << "::" << __FUNCTION_NAME__ << "() "
+#define fDebug( ... ) { Debug dbg; dbg << self_thread() << (Debug::showFilename() ? (std::string(__FILE__)+":") : "") << (Debug::showLineNumber() ? (std::to_string(__LINE__)+": ") : ""); dbg << __CLASS_NAME__ << "::" << __FUNCTION_NAME__ << "("; dbg << fDebug_top( __VA_ARGS__ ); }
 
-#define vDebug( name, args... ) Debug() << self_thread() << __CLASS_NAME__ << "::" << __FUNCTION__ << " " << name << "{ "; fDebug_base( "} ", true, args ); Debug() << ""
 
-#ifndef fDebug // To avoid syntax analyzer error using KDevelop
-extern void fDebug( auto a, ... );
-#endif
+#ifndef fDebug
+extern void fDebug(); // KDevelop hack
+#endif fDebug
 
 #endif // __DBG_CLASS
 

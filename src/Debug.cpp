@@ -9,55 +9,47 @@
 
 namespace GE {
 
+bool Debug::sEnabled = true;
+bool Debug::sLineNumber = false;
+bool Debug::sFilename = false;
 bool Debug::mStoreLog = false;
-std::string Debug::mLog = std::string();
+std::string Debug::mLog = "";
 std::mutex Debug::mLogMutex;
 
 #ifdef GE_ANDROID
 #include <android/log.h>
 static std::string str;
 void Debug::log( const std::string& s ) {
+	mLogMutex.lock();
 	str = str + s;
-// 	__android_log_print( ANDROID_LOG_INFO, "GE", "STR : '%s'", str.c_str() );
 
 	int pos = -1;
 	if ( str.find( "\n" ) > 0 ) {
 		while ( ( pos = str.find( "\n" ) ) > 0 ) {
 			std::string sub = str.substr( 0, pos );
 			(void)__android_log_print( ANDROID_LOG_INFO, "GE", "%s", sub.c_str() );
-			if ( mStoreLog ) {
-				mLogMutex.lock();
-				mLog += sub + "\n";
-				mLogMutex.unlock();
-			}
 			str = str.substr( pos + 1 );
 		}
 	}
 
+	mLogMutex.unlock();
 }
 #else
-void Debug::log( const std::string& s ) {
+void Debug::log( const std::string& s_ ) {
+	mLogMutex.lock();
+
+	std::string s = s_;
+	if ( s.length() >= 2 and s.at(s.length()-1) == '\n' and s.at(s.length()-2) == '\n' ) {
+		s =  s.substr( 0, s.length() - 1 );
+	}
 	std::cout << s << std::flush;
 	if ( mStoreLog ) {
-		mLogMutex.lock();
 		mLog += s;
-		mLogMutex.unlock();
 	}
+
+	mLogMutex.unlock();
 }
 #endif
-
-//static std::mutex mMutex;
-//static std::map< pthread_t, std::ostringstream* > mOutput;
-//static std::map< pthread_t, uint64_t > mTicks;
-
-Debug::Debug()
-{
-}
-
-
-Debug::~Debug()
-{
-}
 
 
 uint64_t Debug::GetTicks()

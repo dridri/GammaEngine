@@ -73,6 +73,7 @@ class Instance;
 
 		bool mainWindowCreated;
 		bool gotFocus;
+		bool justLostFocus;
 		ATouch touches[16];
 		int cursorId;
 		bool last_cPress;

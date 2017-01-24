@@ -26,10 +26,30 @@ float Attenuate( float d, float kc, float kl, float kq )
 }
 
 
+vec2 VR_Distort( vec2 coords )
+{
+	vec2 ret = coords;
+	vec2 ofs = vec2(1920/4, 1080/2);
+	if ( coords.x >= 1920/2 ) {
+		ofs.x = 3 * 1920/4;
+	}
+	vec2 offset = coords - ofs;
+	float r2 = offset.x * offset.x + offset.y * offset.y;
+	float r = sqrt(r2);
+	float k1 = 1.95304;
+	k1 = k1 / ((1920.0 / 4.0)*(1920.0 / 4.0) * 16);
+
+	ret = ofs + 1/(1 - k1 * r*r) * offset;
+
+	return ret;
+}
+
+
 void main()
 {
 	vec2 screenSize = textureSize( ge_Texture0, 0 ).xy;
 	vec2 texcoords = gl_FragCoord.xy / screenSize;
+// 	vec2 texcoords = VR_Distort( gl_FragCoord.xy ) / screenSize;
 	float depth = float(texture2D(ge_Texture1, texcoords.st).r) / 65535.0;
 	gl_FragDepth = depth;
 

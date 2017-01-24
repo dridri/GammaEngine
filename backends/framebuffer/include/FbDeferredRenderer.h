@@ -52,6 +52,7 @@ public:
 	virtual void Render();
 	virtual void Look( Camera* cam );
 
+	virtual Matrix* projectionMatrix();
 	virtual void Update( Light* light = nullptr );
 
 	virtual void AssociateSize( Window* window ) { mAssociatedWindow = window; };

@@ -60,6 +60,18 @@ Socket::Socket( const std::string& server, unsigned short port, PortType type, i
 
 Socket::~Socket()
 {
+	if ( mSocket >= 0 ) {
+		shutdown( mSocket, SHUT_RDWR );
+		mSocket = -1;
+	}
+	if ( mSin ) {
+		Instance::baseInstance()->Free( mSin );
+		mSin = nullptr;
+	}
+	for ( std::list< Buffer >::iterator it = mRecvQueue.begin(); it != mRecvQueue.end(); ) {
+		Instance::baseInstance()->Free( (*it).p );
+	}
+	mRecvQueue.clear();
 }
 
 
@@ -123,7 +135,7 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 			_ge_socket_nonblock( mSocket, false );
 		}
 	}
-/*
+
 	if ( ret < 0 ) {
 		gDebug() << "Socket error : " << strerror( errno ) << "\n";
 		if ( mSocket >= 0 ) {
@@ -131,28 +143,37 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 		}
 		mSocket = -1;
 	}
-*/
+
 	return ret;
 }
 
 
 int Socket::Send( const void* data, size_t size, int timeout )
 {
+	if ( !isConnected() ) {
+		return -1;
+	}
 	if ( mPortType == UDP or mPortType == UDPLite ) {
 		return sendto( mSocket, (const char*)data, size, 0, (struct sockaddr*)mSin, sizeof( struct sockaddr_in ) );
 	}
-/*
-	struct timeval tv;
-	tv.tv_sec = timeout / 1000;
-	tv.tv_usec = 1000 * ( timeout % 1000 );
-	setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
-*/
-	return send( mSocket, (const char*)data, size, 0 );
+
+	timeout = std::max( 0, timeout );
+	if ( timeout > 0 ) {
+		struct timeval tv;
+		tv.tv_sec = timeout / 1000;
+		tv.tv_usec = 1000 * ( timeout % 1000 );
+		setsockopt( mSocket, SOL_SOCKET, SO_SNDTIMEO, (char*)&tv, sizeof(struct timeval) );
+	}
+
+	return send( mSocket, (const char*)data, size, MSG_NOSIGNAL );
 }
 
 
 int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 {
+	if ( !isConnected() ) {
+		return -1;
+	}
 	uint8_t* data = (uint8_t*)_data;
 	int ret = 0;
 
@@ -242,17 +263,26 @@ int Socket::Receive( void* _data, size_t size, bool fixed_size, int timeout )
 
 int Socket::Send( const std::string& s, int timeout )
 {
+	if ( !isConnected() ) {
+		return -1;
+	}
 	return Send( s.c_str(), s.length() + 1, timeout );
 }
 
 
 int Socket::HTTPGet( const std::string& url, int timeout )
 {
+	if ( !isConnected() ) {
+		return -1;
+	}
 	return Send( "GET " + url + " HTTP/1.1\r\n\r\n", timeout );
 }
 
 int Socket::HTTPGet( const std::string& url, const std::map< std::string, std::string >& args, int timeout )
 {
+	if ( !isConnected() ) {
+		return -1;
+	}
 	std::string str = url;
 	bool first = true;
 
@@ -272,6 +302,9 @@ int Socket::HTTPGet( const std::string& url, const std::map< std::string, std::s
 
 std::string Socket::Receive( int timeout )
 {
+	if ( !isConnected() ) {
+		return std::string();
+	}
 	std::string str;
 	uint8_t buf[65];
 
@@ -300,6 +333,9 @@ std::string Socket::Receive( int timeout )
 
 std::string Socket::HTTPResponse( std::string* pHeader, int timeout )
 {
+	if ( !isConnected() ) {
+		return std::string();
+	}
 	std::string header;
 	std::string str;
 	uint8_t buf[65];

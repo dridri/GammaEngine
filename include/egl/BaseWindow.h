@@ -36,7 +36,7 @@ class BaseWindow
 public:
 	BaseWindow( Instance* instance, const std::string& title, int width, int height, uint32_t flags );
 	~BaseWindow();
-	void SetNativeWindow( EGLNativeWindowType win );
+	void SetNativeWindow( EGLNativeWindowType win, bool doubleBuffer = true );
 
 	uint32_t width();
 	uint32_t height();
@@ -64,6 +64,8 @@ protected:
 	EGLDisplay mEGLDisplay;
 	EGLConfig mEGLConfig;
 	EGLContext mEGLContext;
+
+	bool mDoubleBuffered;
 };
 
 

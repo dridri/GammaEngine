@@ -43,6 +43,7 @@ FramebufferWindow::FramebufferWindow( Instance* instance, const std::string& tit
 	, mHeight( height )
 	, mHasResized( false )
 	, mFramebuffer( nullptr )
+	, mSystemFramebuffer( nullptr )
 	, mReversed( false )
 	, mFramebufferAllocated( false )
 {
@@ -75,6 +76,7 @@ int FramebufferWindow::OpenSystemFramebuffer( const std::string& devfile, bool r
 	struct fb_fix_screeninfo finfo;
 	int fbfd;
 	void* fbp = nullptr;
+	bool check_fbp = false;
 	int bpp = 32;
 
 	fbfd = open( devfile.c_str(), O_RDWR );
@@ -95,17 +97,19 @@ int FramebufferWindow::OpenSystemFramebuffer( const std::string& devfile, bool r
 
 		printf( "Second display is %d x %d %dbps\n", vinfo.xres, vinfo.yres, vinfo.bits_per_pixel );
 
-		fbp = (void*)mmap( 0, finfo.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0 );
+// 		fbp = (void*)mmap( 0, finfo.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0 );
+// 		check_fbp = true;
 
 		mWidth = vinfo.xres;
 		mHeight = vinfo.yres;
 		bpp = vinfo.bits_per_pixel;
 	} else {
-try_raw:
-		fbp = mmap( 0, mWidth * mHeight * ( mBpp / 4 ), PROT_READ|PROT_WRITE, MAP_SHARED, fbfd, 0);
+try_raw: ;
+// 		fbp = mmap( 0, mWidth * mHeight * ( mBpp / 8 ), PROT_READ|PROT_WRITE, MAP_SHARED, fbfd, 0 );
+// 		check_fbp = true;
 	}
 
-	if ( fbp <= 0 ) {
+	if ( check_fbp and fbp <= 0 ) {
 		gDebug() << "Unable to create mamory mapping\n";
 		close( fbfd );
 		return -1;
@@ -127,10 +131,11 @@ void FramebufferWindow::MapMemory( void* fb_pointer, int bpp )
 		mFramebufferAllocated = false;
 		mInstance->Free( mFramebuffer );
 	}
-	mFramebuffer = (uint32_t*)fb_pointer;
+	mFramebuffer = (uint32_t*)mInstance->Malloc( ( bpp / 8 ) * mWidth * mHeight );
+	mSystemFramebuffer = (uint32_t*)fb_pointer;
 	mBpp = bpp;
 
-	gDebug() << "mapped : " << mFramebuffer << ", " << mWidth << "x" << mHeight << "\n";
+	gDebug() << "mapped : " << mSystemFramebuffer << ", " << mWidth << "x" << mHeight << "x" << mBpp << "\n";
 }
 
 
@@ -140,9 +145,25 @@ void FramebufferWindow::ClearRegion( uint32_t color, int x, int y, int w, int h 
 	uint16_t* fb16 = (uint16_t*)mFramebuffer;
 	uint32_t color32 = ( color & 0xFF00FF00 ) | ( ( color << 16 ) & 0x00FF0000 ) | ( ( color >> 16 ) & 0x000000FF );
 	uint32_t color24 = color & 0x00FFFFFF;
-// 	uint16_t color16 = ( ( color & 0xF80000 ) >> 8 ) | ( ( color & 0xFC00 ) >> 5 ) | ( ( color & 0xF8 ) >> 3 );
 	uint16_t color16 = ( ( color & 0xF80000 ) >> 19 ) | ( ( color & 0xFC00 ) >> 5 ) | ( ( color & 0xF8 ) << 8 );
 	uint32_t ofs = y * mWidth + x;
+
+	if ( x < 0 ) {
+		gDebug() << "x out of range : " << x << "\n";
+		x = 0;
+	}
+	if ( y < 0 ) {
+		gDebug() << "y out of range : " << y << "\n";
+		y = 0;
+	}
+	if ( x + w > (int32_t)mWidth ) {
+		gDebug() << "w out of range : " << w << "\n";
+		w = mWidth - x;
+	}
+	if ( y + h > (int32_t)mHeight ) {
+		gDebug() << "h out of range : " << h << "\n";
+		h = mHeight - y;
+	}
 
 	if ( x == 0 and y == 0 and w < 0 and h < 0 ) {
 		switch ( mBpp )
@@ -257,13 +278,22 @@ void FramebufferWindow::WaitVSync( bool en )
 void FramebufferWindow::SwapBuffersBase()
 {
 	mFpsImages++;
-	if ( Time::GetTick() - mFpsTimer > 500 ) {
+	if ( Time::GetTick() - mFpsTimer > 1000 ) {
 		mFps = mFpsImages * 1000.0f / ( Time::GetTick() - mFpsTimer );
 		mFpsTimer = Time::GetTick();
 		mFpsImages = 0;
 	}
 
-	// Nothing TODO ?
+	if ( mFramebuffer and mSystemFramebuffer ) {
+		memcpy( mSystemFramebuffer, mFramebuffer, mWidth * mHeight * ( mBpp / 8 ) );
+	} else if ( mFramebuffer ) {
+		if ( lseek( mSystemFbHandler, 0, SEEK_SET ) < 0 ) {
+			gDebug() << "lseek error (" << strerror(errno) << ")\n";
+		}
+		if ( write( mSystemFbHandler, mFramebuffer, mWidth * mHeight * ( mBpp / 8 ) ) < 0 ) {
+			gDebug() << "write error (" << strerror(errno) << ")\n";
+		}
+	}
 }
 
 } // namespace GE 

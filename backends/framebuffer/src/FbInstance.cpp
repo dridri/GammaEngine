@@ -41,7 +41,7 @@ FbInstance::FbInstance( void* pBackend, const char* appName, uint32_t appVersion
 
 int FbInstance::EnumerateGpus()
 {
-	fDebug0();
+	fDebug();
 
 	mGpuCount = 0;
 	return mGpuCount;

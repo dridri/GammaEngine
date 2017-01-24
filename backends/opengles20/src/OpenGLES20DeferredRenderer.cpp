@@ -53,6 +53,12 @@ OpenGLES20DeferredRenderer::~OpenGLES20DeferredRenderer()
 }
 
 
+Matrix* OpenGLES20DeferredRenderer::projectionMatrix()
+{
+	return mMatrixProjection;
+}
+
+
 void OpenGLES20DeferredRenderer::setAmbientColor( const Vector4f& color )
 {
 }

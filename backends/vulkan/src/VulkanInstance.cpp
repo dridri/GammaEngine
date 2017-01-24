@@ -100,7 +100,7 @@ void VulkanInstance::sFree( void* pMem )
 
 int VulkanInstance::EnumerateGpus()
 {
-	fDebug0();
+	fDebug();
 
 	vkEnumerateGpus( mInstance, sizeof(mGpus) / sizeof(mGpus[0]), &mGpuCount, mGpus );
 	return mGpuCount;

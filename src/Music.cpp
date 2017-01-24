@@ -64,7 +64,7 @@ Music& Music::operator=( const Music& other )
 
 void Music::Play()
 {
-	fDebug0();
+	fDebug();
 
 	if ( mOutput ) {
 		mOutput->Resume();
@@ -76,7 +76,7 @@ void Music::Play()
 
 void Music::Stop()
 {
-	fDebug0();
+	fDebug();
 
 	if ( mOutput ) {
 		mOutput->Stop();
@@ -99,7 +99,7 @@ void Music::Stop()
 
 bool Music::run()
 {
-// 	fDebug0();
+// 	fDebug();
 	uint16_t* buffer = new uint16_t[1152 * 2 * 128];
 
 	if ( !mOutput and mSource ) {

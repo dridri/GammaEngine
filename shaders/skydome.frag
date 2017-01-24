@@ -73,11 +73,12 @@ void main()
 
 
 
-uniform float cover = 220.0;
+// uniform float cover = 220.0;
+uniform float cover = 50.0;
 uniform float sharpness = 0.97;
 uniform float scale = 0.001;
 
-const float speed = 0.2 * 3.0;
+const float speed = 1.0;
 const float clouds_height = 3000.0;
 const float clouds_thickness = 500.0;
 
@@ -309,11 +310,11 @@ vec4 ComputeClouds(vec3 pos, vec3 cam)
 	accum.rgb += high.rgb * (1.0 - accum.a);
 	accum.a += high.a;
 */
-/*
-	if(cover <= 100){
-		accum.rgb = mix(accum.rgb, vec3(2.0, 2.0, 3.0), Thunder(ray, end, dir));
-	}
-*/
+
+// 	if(cover <= 50){
+// 		accum.rgb = mix(accum.rgb, vec3(2.0, 2.0, 3.0), Thunder(ray, end, dir));
+// 	}
+
 	accum.a *= 1.0 - clamp(distance(cam, ray) / 100000.0, 0.0, 1.0);
 // 	accum.rgb += sun_color * clamp(distance(cam, ray) / 100000.0, 0.0, 1.0);
 // 	accum.rgb += mix( accum.rgb, sun_far_color * 0.0000000001, clamp(distance(cam, ray) / 100000.0, 0.0, 1.0) );

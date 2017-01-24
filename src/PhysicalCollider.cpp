@@ -81,7 +81,7 @@ void PhysicalCollider::Collide( PhysicalBody* a, PhysicalBody* b )
 		simplex.emplace_back( std::get<0>( lastSupport ) );
 
 		for ( uint32_t i=0; i<simplex.size(); i++ ) {
-			vDebug( "simplex[" << i << "] = ", simplex.at(i).x, simplex.at(i).y, simplex.at(i).z ) << "\n";
+// 			vDebug( "simplex[" << i << "] = ", simplex.at(i).x, simplex.at(i).y, simplex.at(i).z ) << "\n";
 		}
 
 		if ( dir * simplex.back() <= 0.0f ) {
@@ -142,10 +142,10 @@ void PhysicalCollider::Collide( PhysicalBody* a, PhysicalBody* b )
 		Vector3f bo = -std::get<0>( lastSupport );
 		Vector3f collisionPoint_0 = vertsA[ std::get<1>( lastSupport ) ] + ao;
 		Vector3f collisionPoint_1 = vertsB[ std::get<2>( lastSupport ) ] - bo;
-		vDebug( "collisionPoint_0 = ", collisionPoint_0.x, collisionPoint_0.y, collisionPoint_0.z ) << "\n";
-		vDebug( "vertsB[ std::get<2>( lastSupport ) ] = ", vertsB[ std::get<2>( lastSupport ) ].x, vertsB[ std::get<2>( lastSupport ) ].y, vertsB[ std::get<2>( lastSupport ) ].z ) << "\n";
-		vDebug( "collisionPoint_1 = ", collisionPoint_1.x, collisionPoint_1.y, collisionPoint_1.z ) << "\n";
-		vDebug( "vertsA[ std::get<1>( lastSupport ) ] = ", vertsA[ std::get<1>( lastSupport ) ].x, vertsA[ std::get<1>( lastSupport ) ].y, vertsA[ std::get<1>( lastSupport ) ].z ) << "\n";
+// 		vDebug( "collisionPoint_0 = ", collisionPoint_0.x, collisionPoint_0.y, collisionPoint_0.z ) << "\n";
+// 		vDebug( "vertsB[ std::get<2>( lastSupport ) ] = ", vertsB[ std::get<2>( lastSupport ) ].x, vertsB[ std::get<2>( lastSupport ) ].y, vertsB[ std::get<2>( lastSupport ) ].z ) << "\n";
+// 		vDebug( "collisionPoint_1 = ", collisionPoint_1.x, collisionPoint_1.y, collisionPoint_1.z ) << "\n";
+// 		vDebug( "vertsA[ std::get<1>( lastSupport ) ] = ", vertsA[ std::get<1>( lastSupport ) ].x, vertsA[ std::get<1>( lastSupport ) ].y, vertsA[ std::get<1>( lastSupport ) ].z ) << "\n";
 		bool assertA = ( collisionPoint_0 == vertsB[ std::get<2>( lastSupport ) ] );
 		bool assertB = ( collisionPoint_1 == vertsA[ std::get<1>( lastSupport ) ] );
 		assertA = ( collisionPoint_0 * ao <= 0.0f );
@@ -206,10 +206,10 @@ std::tuple< Vector3f, uint32_t, uint32_t > PhysicalCollider::Support( const Vect
 			b = B[i];
 		}
 	}
-	vDebug( "a = ", a.x, a.y, a.z ) << "\n";
-	vDebug( "b = ", b.x, b.y, b.z ) << "\n";
+// 	vDebug( "a = ", a.x, a.y, a.z ) << "\n";
+// 	vDebug( "b = ", b.x, b.y, b.z ) << "\n";
 	r = a - b;
-	vDebug( "r = ", r.x, r.y, r.z ) << "\n";
+// 	vDebug( "r = ", r.x, r.y, r.z ) << "\n";
 	gDebug() << "dir * r = " << ( dir * r ) << "\n";
 
 	return std::make_tuple( r, iA, iB );

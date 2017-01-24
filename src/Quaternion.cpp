@@ -104,7 +104,7 @@ Quaternion Quaternion::operator*( const Quaternion& v ) const
 }
 
 
-Matrix Quaternion::matrix()
+Matrix Quaternion::matrix() const
 {
 	Matrix ret;
 
@@ -156,3 +156,24 @@ Quaternion operator*( float im, const Quaternion& v )
 	return ret;
 }
 */
+
+Vector3f Quaternion::toAngles()
+{
+	Vector3f ans;
+
+	double q2sqr = z * z;
+	double t0 = -2.0 * (q2sqr + w * w) + 1.0;
+	double t1 = +2.0 * (y * z + x * w);
+	double t2 = -2.0 * (y * w - x * z);
+	double t3 = +2.0 * (z * w + x * y);
+	double t4 = -2.0 * (y * y + q2sqr) + 1.0;
+
+	t2 = t2 > 1.0 ? 1.0 : t2;
+	t2 = t2 < -1.0 ? -1.0 : t2;
+
+	ans.x = atan2(t3, t4);
+	ans.y = asin(t2);
+	ans.z = atan2(t1, t0);
+
+	return ans;
+}

@@ -42,7 +42,7 @@ OpenGL43Instance::OpenGL43Instance( void* pBackend, const char* appName, uint32_
 
 int OpenGL43Instance::EnumerateGpus()
 {
-	fDebug0();
+	fDebug();
 
 	mGpuCount = 0;
 	return mGpuCount;

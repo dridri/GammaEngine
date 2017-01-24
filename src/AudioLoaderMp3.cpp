@@ -11,7 +11,7 @@ using namespace GE;
 
 AudioLoader* AudioLoaderMp3::NewInstance()
 {
-	fDebug0();
+	fDebug();
 	return new AudioLoaderMp3();
 }
 

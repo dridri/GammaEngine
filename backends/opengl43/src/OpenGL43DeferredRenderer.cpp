@@ -62,6 +62,12 @@ OpenGL43DeferredRenderer::~OpenGL43DeferredRenderer()
 }
 
 
+Matrix* OpenGL43DeferredRenderer::projectionMatrix()
+{
+	return mMatrixProjection;
+}
+
+
 void OpenGL43DeferredRenderer::setAmbientColor( const Vector4f& color )
 {
 	mAmbientColor = color;
@@ -108,11 +114,18 @@ void OpenGL43DeferredRenderer::Compute()
 		OpenGL43Renderer2D::Compute();
 	}
 
-    glGenFramebuffers( 1, (GLuint*)&mFBO );
+	glGenFramebuffers( 1, (GLuint*)&mFBO );
 	glBindFramebuffer( GL_FRAMEBUFFER, mFBO );
+
+	glGenRenderbuffers( 1, &mColorBuffer );
+	glBindRenderbuffer( GL_RENDERBUFFER, mColorBuffer );
+// 	glRenderbufferStorageMultisample( GL_RENDERBUFFER, 4, GL_RGBA8, mWidth, mHeight ); //FIXME
+	glRenderbufferStorage( GL_RENDERBUFFER, GL_RGBA8, mWidth, mHeight );
+	glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER, mColorBuffer );
 
 	glGenRenderbuffers( 1, &mDepthBuffer );
 	glBindRenderbuffer (GL_RENDERBUFFER, mDepthBuffer );
+// 	glRenderbufferStorageMultisample( GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT24, mWidth, mHeight );
 	glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mWidth, mHeight );
 	glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER, mDepthBuffer );
 
@@ -157,6 +170,15 @@ void OpenGL43DeferredRenderer::Compute()
 	glDrawBuffers( 4, buffers );
 
 	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+/*
+	glGenFramebuffers( 1, (GLuint*)&mFBOColor );
+	glBindFramebuffer( GL_FRAMEBUFFER, mFBOColor );
+	glBindTexture( GL_TEXTURE_2D, mTextureDiffuse );
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, mTextureDiffuse, 0 );
+	GLenum buffers2[] = { GL_COLOR_ATTACHMENT0_EXT };
+	glDrawBuffers( 1, buffers2 );
+	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+*/
 }
 
 
@@ -454,7 +476,12 @@ void OpenGL43DeferredRenderer::Render()
 	if ( !mCommandListReady ) {
 		ComputeCommandList();
 	}
-
+/*
+	glBindFramebuffer( GL_READ_FRAMEBUFFER, mFBO );
+	glBindFramebuffer( GL_DRAW_FRAMEBUFFER, mFBOColor );
+	glBlitFramebuffer( 0, 0, mWidth, mHeight, 0, 0, mWidth, mHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST );
+	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+*/
 	const uint32_t binding_proj = 0;
 	const uint32_t binding_view = 1;
 
@@ -486,9 +513,9 @@ void OpenGL43DeferredRenderer::Render()
 	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixViewID );
 	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixView->data() );
 
-	mMatrixProjection->Identity();
-	mMatrixProjection->Perspective( 60.0f, (float)mWidth / (float)mHeight, 0.01f, 1000.0f );
-// 	mMatrixProjection->Orthogonal( 0.0, mWidth, mHeight, 0.0, -2049.0, 2049.0 );
+// 	mMatrixProjection->Identity();
+// 	mMatrixProjection->Perspective( 60.0f, (float)mWidth / (float)mHeight, 0.01f, 1000.0f );
+//// 	mMatrixProjection->Orthogonal( 0.0, mWidth, mHeight, 0.0, -2049.0, 2049.0 );
 	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixProjectionID );
 	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixProjection->data() );
 
@@ -497,19 +524,21 @@ void OpenGL43DeferredRenderer::Render()
 	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, mCommandBuffer );
 	mRenderMutex.lock();
 	glBindVertexArray( mVAOs[mLightsDataIDi] );
-// 	glDisable( GL_DEPTH_TEST );
-	glEnable( GL_DEPTH_TEST );
+	glDisable( GL_DEPTH_TEST );
 	glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr );
+	glEnable( GL_DEPTH_TEST );
+	glDepthFunc( GL_LEQUAL );
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE );
 	glMultiDrawElementsIndirect( GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 1, 0 );
+	glDepthFunc( GL_LESS );
 	mRenderMutex.unlock();
 
-	mMatrixProjection->Identity();
-	mMatrixProjection->Perspective( 60.0f, (float)mWidth / (float)mHeight, 0.01f, 1000.0f );
+// 	mMatrixProjection->Identity();
+// 	mMatrixProjection->Perspective( 60.0f, (float)mWidth / (float)mHeight, 0.01f, 1000.0f );
 	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixProjectionID );
 	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixProjection->data() );
 
-	glDisable( GL_DEPTH_TEST );
+// 	glDisable( GL_DEPTH_TEST );
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE );
 	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, mCommandBuffer );
 	mRenderMutex.lock();
@@ -519,7 +548,7 @@ void OpenGL43DeferredRenderer::Render()
 	mRenderMutex.unlock();
 	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, 0 );
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-	glEnable( GL_DEPTH_TEST );
+// 	glEnable( GL_DEPTH_TEST );
 
 	glBindVertexArray( 0 );
 	glUseProgram( 0 );

@@ -52,7 +52,7 @@ OpenGLES20Instance::OpenGLES20Instance( void* pBackend, const char* appName, uin
 
 int OpenGLES20Instance::EnumerateGpus()
 {
-	fDebug0();
+	fDebug();
 
 	mGpuCount = 0;
 	return mGpuCount;

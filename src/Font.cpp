@@ -205,7 +205,7 @@ void Font::setSize( uint32_t size )
 
 void Font::RenderGlyphs()
 {
-	fDebug0();
+	fDebug();
 
 	if ( !mModInstance ) {
 		return;

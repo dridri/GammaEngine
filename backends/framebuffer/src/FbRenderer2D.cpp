@@ -503,6 +503,7 @@ void FbRenderer2D::DrawLine( int x0, int y0, uint32_t color0, int x1, int y1, ui
 
 	y0 *= width;
 	y1 *= width;
+/*FIXME
 	if((x0 >= 0) && (x0 < width) && ((y0/width) >= 0) && ((y0/width) < height)){
 		switch ( bpp ) {
 			case 16 : {
@@ -517,6 +518,7 @@ void FbRenderer2D::DrawLine( int x0, int y0, uint32_t color0, int x1, int y1, ui
 			}
 		}
 	}
+*/
 	int fraction;
 	if (dx > dy) {
 		fraction = dy - (dx >> 1);

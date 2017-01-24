@@ -103,7 +103,7 @@ static int _ge_mouse_wrap_y = 0;
 
 - (void)ShowInterstitialAd
 {
-	fDebug0();
+	fDebug();
 	if ( self.interstitial != nil && [ self.interstitial isReady ] ) {
 		gDebug() << "interstitial ad ready\n";
 		self.window.rootViewController = adMobViewController;

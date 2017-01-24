@@ -178,8 +178,10 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 
 void FontLoaderTtf::fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, uint32_t* framebuffer, int width, int height, uint32_t color, uint32_t outline, uint32_t buf_bpp, bool reverse )
 {
+	buf_bpp = buf_bpp & 0xFF;
 	int x, y;
 	int bpp_step = buf_bpp / 8;
+	uint8_t* fbEnd = ( (uint8_t*)framebuffer ) + width * height * bpp_step;
 
 	uint16_t color16 = ( ( color & 0xF80000 ) >> 19 ) | ( ( color & 0xFC00 ) >> 5 ) | ( ( color & 0xF8 ) << 8 );
 
@@ -190,25 +192,27 @@ void FontLoaderTtf::fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, u
 
 	uint8_t* line = bitmap->buffer;
 	uint8_t* fbLine = ((uint8_t*)framebuffer) + ( xofs + yofs * width ) * bpp_step;
-	for ( y = 0; y < (int)bitmap->rows; y++ ) {
+	for ( y = 0; y < (int)bitmap->rows and fbLine < fbEnd; y++ ) {
 		uint8_t* column = line;
 		uint8_t* fbColumn = fbLine;
-		for ( x = 0; x < (int)bitmap->width; x++ ) {
-			if ( x + xofs < width && x + xofs >= 0 && y + yofs < height && y + yofs >= 0 ) {
-				uint8_t val = *column;
-				if ( val >= 0x7F ) {
-					switch ( buf_bpp ) {
-						case 16 :
-							*((uint16_t*)fbColumn) = color16;
-							break;
-						default :
-							*((uint32_t*)fbColumn) = ( val << 24 ) | ( color & 0x00FFFFFF );
-							break;
+		if ( fbLine >= (uint8_t*)framebuffer ) {
+			for ( x = 0; x < (int)bitmap->width and fbColumn < fbEnd; x++ ) {
+				if ( x + xofs < width && x + xofs >= 0 && y + yofs < height && y + yofs >= 0 ) {
+					uint8_t val = *column;
+					if ( val >= 0x7F ) {
+						switch ( buf_bpp ) {
+							case 16 :
+								*((uint16_t*)fbColumn) = color16;
+								break;
+							default :
+								*((uint32_t*)fbColumn) = ( val << 24 ) | ( color & 0x00FFFFFF );
+								break;
+						}
 					}
 				}
+				column++;
+				fbColumn += bpp_step;
 			}
-			column++;
-			fbColumn += bpp_step;
 		}
 		line += bitmap->pitch;
 		fbLine += width * bpp_step;
@@ -217,35 +221,37 @@ void FontLoaderTtf::fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, u
 	if ( outline ) {
 		line = bitmap->buffer;
 		fbLine = ((uint8_t*)framebuffer) + ( ( xofs - 2 ) + ( yofs - 2 ) * width ) * bpp_step;
-		for ( y = 0; y < (int)bitmap->rows + 2; y++ ) {
+		for ( y = 0; y < (int)bitmap->rows + 2 and fbLine < fbEnd; y++ ) {
 			uint8_t* column = line;
 			uint8_t* fbColumn = fbLine;
-			for ( x = 0; x < (int)bitmap->width + 2; x++ ) {
-				switch ( buf_bpp ) {
-					case 16 :
-						// TODO
-						break;
-					default :
-						uint32_t right = *((uint32_t*)(fbColumn+bpp_step));
-						uint32_t left = *((uint32_t*)(fbColumn-bpp_step));
-						uint32_t bottom = *((uint32_t*)(fbColumn+width*bpp_step));
-						uint32_t top = *((uint32_t*)(fbColumn-width*bpp_step));
-						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( right & 0xFF000000 ) != 0 ) {
-							*((uint32_t*)fbColumn) = outline;
-						}
-						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( left & 0xFF000000 ) != 0 and left != outline ) {
-							*((uint32_t*)fbColumn) = outline;
-						}
-						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( bottom & 0xFF000000 ) != 0 ) {
-							*((uint32_t*)fbColumn) = outline;
-						}
-						if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( top & 0xFF000000 ) != 0 and top != outline ) {
-							*((uint32_t*)fbColumn) = outline;
-						}
-						break;
+			if ( fbLine >= (uint8_t*)framebuffer ) {
+				for ( x = 0; x < (int)bitmap->width + 2 and fbColumn < fbEnd; x++ ) {
+					switch ( buf_bpp ) {
+						case 16 :
+							// TODO
+							break;
+						default :
+							uint32_t right = *((uint32_t*)(fbColumn+bpp_step));
+							uint32_t left = *((uint32_t*)(fbColumn-bpp_step));
+							uint32_t bottom = *((uint32_t*)(fbColumn+width*bpp_step));
+							uint32_t top = *((uint32_t*)(fbColumn-width*bpp_step));
+							if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( right & 0xFF000000 ) != 0 ) {
+								*((uint32_t*)fbColumn) = outline;
+							}
+							if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( left & 0xFF000000 ) != 0 and left != outline ) {
+								*((uint32_t*)fbColumn) = outline;
+							}
+							if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( bottom & 0xFF000000 ) != 0 ) {
+								*((uint32_t*)fbColumn) = outline;
+							}
+							if ( ( *((uint32_t*)fbColumn) & 0xFF000000 ) == 0 and ( top & 0xFF000000 ) != 0 and top != outline ) {
+								*((uint32_t*)fbColumn) = outline;
+							}
+							break;
+					}
+					column++;
+					fbColumn += bpp_step;
 				}
-				column++;
-				fbColumn += bpp_step;
 			}
 			line += bitmap->pitch;
 			fbLine += width * bpp_step;

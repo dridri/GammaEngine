@@ -52,6 +52,7 @@ public:
 	virtual void Render();
 	virtual void Look( Camera* cam );
 
+	virtual Matrix* projectionMatrix();
 	virtual void Update( Light* light = nullptr );
 
 	virtual void AssociateSize( Window* window ) { mAssociatedWindow = window; };
@@ -84,6 +85,8 @@ private:
 	uint32_t mLightsDataID[2];
 	uint32_t mVAOs[2];
 	uint32_t mFBO;
+	uint32_t mFBOColor;
+	uint32_t mColorBuffer;
 	uint32_t mDepthBuffer;
 	uint32_t mTextureDiffuse;
 	uint32_t mTextureDepth;

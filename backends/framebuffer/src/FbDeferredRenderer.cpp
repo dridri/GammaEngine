@@ -50,6 +50,12 @@ FbDeferredRenderer::~FbDeferredRenderer()
 }
 
 
+Matrix* FbDeferredRenderer::projectionMatrix()
+{
+	return mMatrixProjection;
+}
+
+
 void FbDeferredRenderer::setAmbientColor( const Vector4f& color )
 {
 }

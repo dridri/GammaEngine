@@ -77,8 +77,8 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 		GLX_BLUE_SIZE, 8,
 		GLX_ALPHA_SIZE, 8,
 		GLX_DEPTH_SIZE, 24,
-// 		GLX_SAMPLE_BUFFERS, 1,
-// 		GLX_SAMPLES, 1,
+		GLX_SAMPLE_BUFFERS, 1,
+		GLX_SAMPLES, 4,
 		None
     };
 	fbconfigs = glXChooseFBConfig(mDisplay, mScreen, VisData, &numfbconfigs);
@@ -294,7 +294,15 @@ void BaseWindow::pEventThread()
 // 						printf( "'%c' pressed\n", key);
 						mKeys[key] = true;
 					} else {
-						// TODO
+						if ( key == XK_Control_L or key == XK_Control_R ) {
+							mKeys[ Input::CONTROL ] = true;
+						} else if ( key == XK_Shift_L or key == XK_Shift_R ) {
+							mKeys[ Input::SHIFT ] = true;
+						} else if ( key == XK_Alt_L ) {
+							mKeys[ Input::LALT ] = true;
+						} else if ( key == XK_Alt_R ) {
+							mKeys[ Input::RALT ] = true;
+						} 
 						if ( mKeys[ Input::LALT ] && mKeys[ Input::F4 ] ) {
 							finished = true;
 						}
@@ -309,7 +317,15 @@ void BaseWindow::pEventThread()
 // 						printf( "'%c' released\n", key);
 						mKeys[key] = false;
 					} else {
-						// TODO
+						if ( key == XK_Control_L or key == XK_Control_R ) {
+							mKeys[ Input::CONTROL ] = false;
+						} else if ( key == XK_Shift_L or key == XK_Shift_R ) {
+							mKeys[ Input::SHIFT ] = false;
+						} else if ( key == XK_Alt_L ) {
+							mKeys[ Input::LALT ] = false;
+						} else if ( key == XK_Alt_R ) {
+							mKeys[ Input::RALT ] = false;
+						} 
 					}
 					break;
 				case ButtonPress:

@@ -34,8 +34,9 @@ public:
 
 	void normalize();
 
-	Matrix matrix();
+	Matrix matrix() const;
 	Matrix inverseMatrix();
+	Vector3f toAngles();
 
 	Quaternion operator+( const Quaternion& v ) const;
 	Quaternion operator-( const Quaternion& v ) const;

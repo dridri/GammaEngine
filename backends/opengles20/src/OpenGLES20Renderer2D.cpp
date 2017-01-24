@@ -61,9 +61,6 @@ static const char fragment_shader_base[] =
 "	void main()\n"
 "	{\n"
 "		ge_FragColor = ge_Color * texture( ge_Texture0, ge_TextureCoord.xy );\n"
-"/*		if ( ge_FragColor.a <= 0.2 ) {\n"
-"			discard;\n"
-"		}*/\n"
 "	}\n"
 ;
 

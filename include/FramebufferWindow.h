@@ -64,6 +64,7 @@ protected:
 	Vector2i mCursorWarp;
 
 	uint32_t* mFramebuffer;
+	uint32_t* mSystemFramebuffer;
 	int32_t mBpp;
 	bool mReversed;
 	bool mFramebufferAllocated;

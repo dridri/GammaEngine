@@ -46,6 +46,7 @@ public:
 	virtual void Render() = 0;
 	virtual void Look( Camera* cam ) = 0;
 
+	virtual Matrix* projectionMatrix() = 0;
 	virtual void Update( Light* light = nullptr ) = 0;
 
 	virtual void AssociateSize( Window* window ) = 0;

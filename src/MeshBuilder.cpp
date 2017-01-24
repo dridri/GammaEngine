@@ -34,6 +34,7 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 	, mSize( size )
 {
 	if ( basetype == Plane ) {
+		/*
 		const Vector3f plane[4] = {
 			{ -0.5f * size.x, -0.5f * size.y, 0.0f },
 			{  0.5f * size.x, -0.5f * size.y, 0.0f },
@@ -44,6 +45,32 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 		mFaces.emplace_back( Face( plane[0], plane[2], plane[3] ) );
 		for ( int i = 0; i < tesslevel; i++ ) {
 			Tesselate( None );
+		}
+		*/
+		const Vector3f plane[4] = {
+			{ -0.5f, -0.5f, 0.0f },
+			{  0.5f, -0.5f, 0.0f },
+			{  0.5f,  0.5f, 0.0f },
+			{ -0.5f,  0.5f, 0.0f },
+		};
+		if ( tesslevel == 0 ) {
+			mFaces.emplace_back( Face( plane[0], plane[1], plane[2] ) );
+			mFaces.emplace_back( Face( plane[0], plane[2], plane[3] ) );
+		} else {
+			int side = std::pow( 2, tesslevel );
+			Vector3f block_size = size * ( 1.0f / (float)side );
+			for ( int y = 0; y < side; y++ ) {
+				for ( int x = 0; x < side; x++ ) {
+					Vector3f offset = Vector3f( (float)x * block_size.x, (float)y * block_size.y, 0.0f ) - size * 0.5f;
+					Vector3f bplane[4];
+					bplane[0] = offset + Vector3f( plane[0].x * block_size.x, plane[0].y * block_size.y, plane[0].z * block_size.z );
+					bplane[1] = offset + Vector3f( plane[1].x * block_size.x, plane[1].y * block_size.y, plane[1].z * block_size.z );
+					bplane[2] = offset + Vector3f( plane[2].x * block_size.x, plane[2].y * block_size.y, plane[2].z * block_size.z );
+					bplane[3] = offset + Vector3f( plane[3].x * block_size.x, plane[3].y * block_size.y, plane[3].z * block_size.z );
+					mFaces.emplace_back( Face( bplane[0], bplane[1], bplane[2] ) );
+					mFaces.emplace_back( Face( bplane[0], bplane[2], bplane[3] ) );
+				}
+			}
 		}
 	}
 

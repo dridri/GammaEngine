@@ -242,7 +242,13 @@ void BaseWindow::SwapBuffersBase()
 
 	mWidth = mEngine->width;
 	mHeight = mEngine->height;
-	eglSwapBuffers( mEngine->display, mEngine->surface );
+	if ( mEngine->surface != EGL_NO_SURFACE ) {
+		eglSwapBuffers( mEngine->display, mEngine->surface );
+	}
+
+	if ( mEngine->justLostFocus ) {
+		mEngine->justLostFocus = false;
+	}
 }
 
 
@@ -275,8 +281,10 @@ void BaseWindow::engine_handle_cmd( struct android_app* app, int32_t cmd )
 	int w, h;
 	switch ( cmd ) {
 		case APP_CMD_SAVE_STATE:
+			gDebug() << "APP_CMD_SAVE_STATE\n";
 			break;
 		case APP_CMD_INIT_WINDOW:
+			gDebug() << "APP_CMD_INIT_WINDOW\n";
 			if ( mEngine->app->window != nullptr && mEngine->mainWindowCreated ) {
 				while ( mEngine->hasSurface && !mEngine->aSurface ) {
 					Time::Sleep(10);
@@ -296,6 +304,7 @@ void BaseWindow::engine_handle_cmd( struct android_app* app, int32_t cmd )
 			}
 			break;
 		case APP_CMD_TERM_WINDOW:
+			gDebug() << "APP_CMD_TERM_WINDOW\n";
 			eglMakeCurrent( mEngine->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT );
 			if ( mEngine->surface != EGL_NO_SURFACE ) {
 				eglDestroySurface(mEngine->display, mEngine->surface);
@@ -309,14 +318,25 @@ void BaseWindow::engine_handle_cmd( struct android_app* app, int32_t cmd )
 
 			break;
 		case APP_CMD_GAINED_FOCUS:
+			gDebug() << "APP_CMD_GAINED_FOCUS\n";
 // 			ge_ResumeAllThreads(); // TODO
 			Time::IncreasePause( Time::GetTick() - mPauseTime );
 			mEngine->gotFocus = true;
 			break;
 		case APP_CMD_LOST_FOCUS:
+			gDebug() << "APP_CMD_LOST_FOCUS\n";
+			for ( uint32_t i = 0; i < 16; i++ ) {
+				if ( mEngine->touches[i].used ) {
+					mEngine->touches[i].used = false;
+					mEngine->touches[i].id = AMOTION_EVENT_ACTION_UP;
+				}
+			}
+			mKeys[ Input::LBUTTON ] = false;
+			mEngine->cursorId = -1;
 // 			ge_PauseAllThreads(); // TODO
 			mPauseTime = Time::GetTick();
 			mEngine->gotFocus = false;
+			mEngine->justLostFocus = true;
 			break;
 	}
 }
@@ -350,18 +370,21 @@ int32_t BaseWindow::engine_handle_input( struct android_app* app, AInputEvent* e
 		for ( int j = 0; j < n; j++ ) {
 			ATouch* touch = nullptr;
 			for ( uint32_t i = 0; i < 16; i++ ) {
+				/*
 				if ( touches[i].used && ( ( touches[i].action == AMOTION_EVENT_ACTION_UP ) || ( touches[i].action == AMOTION_EVENT_ACTION_POINTER_UP ) ) ) {
 					touches[i].used = false;
+					touches[i].id = -1;
 					if ( touches[i].id == engine->cursorId ) {
 						engine->cursorId = -1;
 					}
 				}
+				*/
 				if ( touches[i].used && touches[i].id == AMotionEvent_getPointerId( event, j ) ) {
 					touch = &touches[i];
 					break;
 				}
 			}
-			if ( !touch ) {
+			if ( !touch && ( action != AMOTION_EVENT_ACTION_UP ) && ( action != AMOTION_EVENT_ACTION_POINTER_UP ) ) {
 				for ( uint32_t i = 0; i < 16; i++ ) {
 					if ( touches[i].used == false ) {
 						touch = &touches[i];
@@ -412,6 +435,18 @@ void BaseWindow::PollEvents()
 	struct android_poll_source* source;
 	uint64_t pause_start = Time::GetTick();
 
+	Engine* engine = mEngine;
+	ATouch* touches = engine->touches;
+	for ( uint32_t i = 0; i < 16; i++ ) {
+		if ( touches[i].used && ( ( touches[i].action == AMOTION_EVENT_ACTION_UP ) || ( touches[i].action == AMOTION_EVENT_ACTION_POINTER_UP ) ) ) {
+			touches[i].used = false;
+			touches[i].id = -1;
+			if ( touches[i].id == engine->cursorId ) {
+				engine->cursorId = -1;
+			}
+		}
+	}
+
 	do {
 		while ( ( ident = ALooper_pollAll( 0, nullptr, &events, (void**)&source) ) >= 0 ) {
 			if (source != nullptr) {
@@ -423,20 +458,21 @@ void BaseWindow::PollEvents()
 				gDebug() << "display destroyed\n";
 				mExiting = false;
 				mExitApp = true;
+				ANativeActivity_finish( mEngine->app->activity );
 // 				exit( 0 );
 				return;
 			}
 		}
-		if ( mEngine->gotFocus == false ) {
+		if ( mEngine->gotFocus == false and mEngine->justLostFocus == false ) {
 			Time::Sleep( 50 );
 		}
-	} while ( mEngine->gotFocus == false );
+	} while ( mEngine->gotFocus == false and mEngine->justLostFocus == false );
 }
 
 
 void BaseWindow::ShowInterstitialAd()
 {
-	fDebug0();
+	fDebug();
 	mAdsVisible = true;
 	while ( mAdsVisible ) {
 		PollEvents();
@@ -504,6 +540,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_drich_libge_LibGE_adsVisible( JNI
 extern "C" JNIEXPORT jboolean JNICALL Java_com_drich_libge_LibGE_exiting( JNIEnv* env, jobject obj )
 {
 // 	fDebug( env, obj );
+// 	gDebug() << "  => " << BaseWindow::mExitApp << "\n";
 	return BaseWindow::mExitApp;
 }
 

@@ -46,9 +46,11 @@ public:
 	void WalkRight( float speed = 1.0f );
 	void RotateH( const float v, float speed = 1.0f );
 	void RotateV( const float v, float speed = 1.0f );
+	void setRotation( const float h, const float v );
 	void setPosition( const Vector3f& pos );
 	void setInertia( const float inertia );
 	void setRotationInertia( const float inertia );
+	void setMatrix( const Matrix& m );
 
 	const Vector3f& position();
 	const Vector3f& lookPoint();
@@ -59,6 +61,7 @@ public:
 protected:
 	Mode mMode;
 	Matrix mMatrix;
+	bool mUserMatrix;
 	Vector3f mPosition;
 	Vector3f mLookPoint;
 	Vector3f mUpVector;

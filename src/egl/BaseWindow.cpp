@@ -46,19 +46,22 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 	, mFps( 0.0f )
 	, mFpsImages( 0 )
 	, mFpsTimer( 0 )
+	, mDoubleBuffered( true )
 {
 	Window::Flags flags = static_cast<Window::Flags>( _flags );
 
 	EGLint attribList[] =
 	{
-		EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,
 		EGL_SURFACE_TYPE,      EGL_WINDOW_BIT,
+		EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,
 		EGL_RED_SIZE,          8,
 		EGL_GREEN_SIZE,        8,
 		EGL_BLUE_SIZE,         8,
 		EGL_ALPHA_SIZE,        8,
-	//	EGL_DEPTH_SIZE,        24,
+		EGL_DEPTH_SIZE,        16,
 		EGL_STENCIL_SIZE,      0,
+// 		EGL_SAMPLE_BUFFERS,    1,
+// 		EGL_SAMPLES,           4,
 		EGL_NONE
 	};
 
@@ -73,19 +76,26 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 	eglChooseConfig( mEGLDisplay, attribList, &mEGLConfig, 1, &numConfigs );
 	mEGLContext = eglCreateContext( mEGLDisplay, mEGLConfig, EGL_NO_CONTEXT, contextAttribs );
 
-	Instance::setLocale( std::string( getenv( "LANG" ) ).substr( 0, 2 ) );
-	Instance::setUserName( std::string( getenv( "USER" ) ) );
-	Instance::setUserEmail( std::string( getenv( "USER" ) ) + "@no-mail.nope" );
+	const char* lang = getenv( "LANG" );
+	const char* user = getenv( "LANG" );
+	if ( lang ) {
+		Instance::setLocale( std::string( lang ).substr( 0, 2 ) );
+	}
+	if ( user ) {
+		Instance::setUserName( std::string( user ) );
+		Instance::setUserEmail( std::string( user ) + "@no-mail.nope" );
+	}
 }
 
 
-void BaseWindow::SetNativeWindow( EGLNativeWindowType win )
+void BaseWindow::SetNativeWindow( EGLNativeWindowType win, bool doubleBuffer )
 {
 	EGLSurface surface;
 	const EGLint egl_surface_attribs[] = {
-		EGL_RENDER_BUFFER, EGL_BACK_BUFFER,
+		EGL_RENDER_BUFFER, ( EGL_BACK_BUFFER + (!doubleBuffer) ),
 		EGL_NONE,
 	};
+	mDoubleBuffered = doubleBuffer;
 
 	surface = eglCreateWindowSurface( mEGLDisplay, mEGLConfig, win, egl_surface_attribs );
 	mWindow = reinterpret_cast< uintptr_t >( surface );
@@ -149,7 +159,11 @@ void BaseWindow::WaitVSync( bool en )
 
 void BaseWindow::SwapBuffersBase()
 {
-	eglSwapBuffers( mEGLDisplay, reinterpret_cast< EGLSurface >( mWindow ) );
+	if ( mDoubleBuffered ) {
+		eglSwapBuffers( mEGLDisplay, reinterpret_cast< EGLSurface >( mWindow ) );
+	} else {
+		glFlush();
+	}
 
 	mFpsImages++;
 	if ( Time::GetTick() - mFpsTimer > 500 ) {

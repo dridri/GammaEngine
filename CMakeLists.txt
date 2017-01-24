@@ -254,6 +254,8 @@ if( NOT ("${target}" MATCHES "ios" OR "${target}" MATCHES "android") )
 	if ( NOT "${notest}" MATCHES "yes" AND NOT "${notest}" MATCHES "1" )
 		add_executable(testexec src/main.cpp)
 		target_link_libraries(testexec ${LIB_NAME} ${LIBS})
+		add_executable(osvr src/main_osvr.cpp)
+		target_link_libraries(osvr osvrJointClientKit osvrClientKit ${LIB_NAME} ${LIBS})
 	endif()
 endif()
 

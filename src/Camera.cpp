@@ -26,6 +26,7 @@ Camera::Camera( const Mode& mode )
 	: Time()
 	, mMode( mode )
 	, mMatrix( Matrix() )
+	, mUserMatrix( false )
 	, mPosition( Vector3f( 0.0f, 0.0f, 0.0f ) )
 	, mLookPoint( Vector3f( 1.0f, 0.0f, 0.0f ) )
 	, mUpVector( Vector3f( 0.0f, 0.0f, 1.0f ) )
@@ -43,6 +44,12 @@ Camera::Camera( const Mode& mode )
 
 Camera::~Camera()
 {
+}
+
+void Camera::setMatrix( const Matrix& m )
+{
+	mUserMatrix = true;
+	mMatrix = m;
 }
 
 
@@ -66,6 +73,7 @@ void Camera::UpVector( const Vector3f& up )
 
 void Camera::LookAt( const Vector3f& pos, const Vector3f& center )
 {
+	mUserMatrix = false;
 	mPosition = pos;
 	mLookPoint = center;
 }
@@ -73,24 +81,28 @@ void Camera::LookAt( const Vector3f& pos, const Vector3f& center )
 
 void Camera::setPosition( const Vector3f& pos )
 {
+	mUserMatrix = false;
 	mPosition = pos;
 }
 
 
 void Camera::setInertia( const float inertia )
 {
+	mUserMatrix = false;
 	mInertiaFactor = inertia;
 }
 
 
 void Camera::setRotationInertia( const float inertia )
 {
+	mUserMatrix = false;
 	mTorqueFactor = inertia;
 }
 
 
 void Camera::Translate( const Vector3f& t )
 {
+	mUserMatrix = false;
 	mPosition += t;
 	mLookPoint += t;
 }
@@ -98,6 +110,7 @@ void Camera::Translate( const Vector3f& t )
 
 void Camera::WalkForward( float speed )
 {
+	mUserMatrix = false;
 	float dt = Sync();
 
 	float x = std::cos( mRotH ) * speed * dt;
@@ -117,6 +130,7 @@ void Camera::WalkForward( float speed )
 
 void Camera::WalkBackward( float speed )
 {
+	mUserMatrix = false;
 	float dt = Sync();
 
 	float x = std::cos( mRotH ) * speed * dt;
@@ -135,6 +149,7 @@ void Camera::WalkBackward( float speed )
 
 void Camera::WalkLeft( float speed )
 {
+	mUserMatrix = false;
 	float dt = Sync();
 
 	float x = std::cos( mRotH ) * speed * dt;
@@ -153,6 +168,7 @@ void Camera::WalkLeft( float speed )
 
 void Camera::WalkRight( float speed )
 {
+	mUserMatrix = false;
 	float dt = Sync();
 
 	float x = std::cos( mRotH ) * speed * dt;
@@ -169,8 +185,17 @@ void Camera::WalkRight( float speed )
 }
 
 
+void Camera::setRotation( const float h, const float v )
+{
+	mUserMatrix = false;
+	mRotH = h;
+	mRotV = v;
+}
+
+
 void Camera::RotateH( const float v, float speed )
 {
+	mUserMatrix = false;
 	mRotH += v * speed;
 
 	mTorque.x += v * speed;
@@ -179,6 +204,7 @@ void Camera::RotateH( const float v, float speed )
 
 void Camera::RotateV( const float v, float speed )
 {
+	mUserMatrix = false;
 	mRotV += v * speed;
 
 	mTorque.y += v * speed;
@@ -222,9 +248,11 @@ Vector3f Camera::direction()
 
 float* Camera::data()
 {
-	Update();
-	mMatrix.Identity();
-	mMatrix.LookAt( mPosition, mLookPoint, mUpVector );
+	if ( not mUserMatrix ) {
+		Update();
+		mMatrix.Identity();
+		mMatrix.LookAt( mPosition, mLookPoint, mUpVector );
+	}
 	return mMatrix.data();
 }
 

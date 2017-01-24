@@ -149,7 +149,7 @@ AudioOutput::~AudioOutput()
 
 std::vector< std::pair< int, std::string > > AudioOutput::DevicesList()
 {
-	fDebug0();
+	fDebug();
 	std::vector< std::pair< int, std::string > > ret;
 /*	UNSUPPORTED BY ANDROID (LOL)
 	SLresult result;

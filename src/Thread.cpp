@@ -23,6 +23,9 @@
 
 using namespace GE;
 
+std::map< pthread_t, Thread* > Thread::mThreads = std::map< pthread_t, Thread* >();
+Thread* Thread::MainThread = reinterpret_cast<Thread*>(0x1);
+
 Thread::Thread( Window* shared_graphics_window )
 	: mSharedWindow( shared_graphics_window )
 	, mSharedContext( 0 )
@@ -36,11 +39,22 @@ Thread::Thread( Window* shared_graphics_window )
 	}
 // 	mThread = new std::thread( &Thread::sThreadEntry, this );
 	pthread_create( &mThread, nullptr, (void*(*)(void*))&Thread::sThreadEntry, this );
+	mThreads.emplace( std::make_pair( mThread, this ) );
 }
 
 
 Thread::~Thread()
 {
+}
+
+
+GE::Thread* GE::Thread::currentThread()
+{
+	pthread_t curr = pthread_self();
+	if ( mThreads.count( curr ) > 0 ) {
+		return mThreads[curr];
+	}
+	return MainThread;
 }
 
 

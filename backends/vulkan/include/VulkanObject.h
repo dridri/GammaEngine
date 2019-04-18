@@ -32,7 +32,7 @@
 #include <vector>
 #include <map>
 
-#include <vulkan.h>
+#include <vulkan/vulkan.h>
 
 #include "Object.h"
 #include "Vertex.h"
@@ -43,23 +43,34 @@ using namespace GE;
 class VulkanObject : public Object
 {
 public:
-	VulkanObject( Vertex* verts = nullptr, uint32_t nVerts = 0 );
+	VulkanObject();
+	VulkanObject( Vertex* verts = nullptr, uint32_t nVerts = 0, uint32_t* indices = nullptr, uint32_t nIndices = 0 );
 	VulkanObject( const std::string filename, Instance* instance = nullptr );
 	~VulkanObject();
 
 	virtual void setTexture( Instance* Instance, int unit, Image* texture );
-	virtual void UpdateVertices( Instance* instance, Vertex* verts, uint32_t offset, uint32_t count );
+	virtual void UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count );
+	virtual void ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count );
 	virtual void UploadMatrix( Instance* instance );
 
-	VK_DESCRIPTOR_SET descriptorSet( Instance* instance );
-	VK_MEMORY_REF verticesRef( Instance* instance );
-	VK_MEMORY_REF indicesRef( Instance* instance );
+	void UpdateIndices( Instance* instance, uint32_t* indices, uint32_t offset, uint32_t count );
+// 	VkCommandBuffer& commandBuffer( VulkanInstance* instance );
+	VkBuffer& vertexBuffer( VulkanInstance* instance );
+	VkBuffer& indicesBuffer( VulkanInstance* instance );
+
+// 	VK_DESCRIPTOR_SET descriptorSet( Instance* instance );
+// 	VK_MEMORY_REF verticesRef( Instance* instance );
+// 	VK_MEMORY_REF indicesRef( Instance* instance );
 
 protected:
 	// descriptorSet, descriptorMemRef, vertexDataMemRef, indexMemRef, matrixMemRef associated to Instance*
-	std::map< Instance*, std::tuple< VK_DESCRIPTOR_SET, VK_MEMORY_REF, VK_MEMORY_REF, VK_MEMORY_REF, VK_MEMORY_REF > > mVkRefs;
+// 	std::map< Instance*, std::tuple< VK_DESCRIPTOR_SET, VK_MEMORY_REF, VK_MEMORY_REF, VK_MEMORY_REF, VK_MEMORY_REF > > mVkRefs;
 
-	void AllocateGpu( Instance* instance );
+	void AllocateGpu( VulkanInstance* instance );
+
+// 	std::map< VulkanInstance*, VkCommandBuffer > mCommandBuffers;
+	std::map< VulkanInstance*, std::pair< VkDeviceMemory, VkBuffer > > mVertexBuffers;
+	std::map< VulkanInstance*, std::pair< VkDeviceMemory, VkBuffer > > mIndicesBuffers;
 };
 
 

@@ -39,6 +39,12 @@ public:
 	virtual void AddLight( Light* light ) = 0;
 	virtual void AddSunLight( Light* sun_light ) = 0;
 	virtual void setAmbientColor( const Vector4f& color ) = 0;
+	virtual void setExtraBuffersCount( uint32_t count ) = 0;
+
+	virtual int LoadVertexShader( const std::string& file ) = 0;
+	virtual int LoadVertexShader( const void* data, size_t size ) = 0;
+	virtual int LoadFragmentShader( const std::string& file ) = 0;
+	virtual int LoadFragmentShader( const void* data, size_t size ) = 0;
 
 	virtual void Compute() = 0;
 	virtual void Bind() = 0;

@@ -56,6 +56,8 @@ class Instance;
 		bool hasSurface;
 		int ofsx;
 		int ofsy;
+		int holderWidth;
+		int holderHeight;
 		int fullscreen;
 		int aflags;
 
@@ -101,6 +103,7 @@ public:
 	void SwapBuffersBase();
 	float fps() const;
 
+	static void SetAdmobPublisherID( const std::string& id );
 	static void ShowInterstitialAd();
 	static void AndroidInit( struct android_app* state );
 	static void AndroidExit( int retcode = 0 );

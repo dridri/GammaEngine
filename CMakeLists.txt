@@ -11,12 +11,36 @@ option(bullet "bullet")
 option(static "static")
 option(notest "notest")
 
+option(png "png")
+option(jpeg "jpeg")
+option(freetype "freetype")
+option(mad "mad")
+
 if ( "${audio}" MATCHES OFF )
 	set( audio "yes" )
+	add_definitions( -DGE_AUDIO )
 endif()
 
 if ( "${bullet}" MATCHES OFF )
 	set( bullet "yes" )
+	add_definitions( -DGE_BULLET )
+endif()
+
+if ( "${png}" MATCHES OFF )
+	set( png "yes" )
+	add_definitions( -DGE_PNG )
+endif()
+if ( "${jpeg}" MATCHES OFF )
+	set( jpeg "yes" )
+	add_definitions( -DGE_JPEG )
+endif()
+if ( "${freetype}" MATCHES OFF )
+	set( freetype "yes" )
+	add_definitions( -DGE_FREETYPE )
+endif()
+if ( "${mad}" MATCHES OFF )
+	set( mad "yes" )
+	add_definitions( -DGE_MAD )
 endif()
 
 if ( "${target}" MATCHES "ios" )
@@ -29,20 +53,26 @@ else()
 	find_package(OpenGL REQUIRED)
 endif()
 
-find_package(PNG REQUIRED) #PNG16
-find_package(JPEG REQUIRED)
-find_package(Freetype REQUIRED)
-find_package(LibMad REQUIRED)
+if ( "${png}" MATCHES "yes" )
+	find_package(PNG REQUIRED) #PNG16
+	include_directories(${PNG_INCLUDE_DIR})
+endif()
+if ( "${jpeg}" MATCHES "yes" )
+	find_package(JPEG REQUIRED)
+endif()
+if ( "${freetype}" MATCHES "yes" )
+	find_package(Freetype REQUIRED)
+	include_directories(${FREETYPE_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS}/freetype)
+endif()
+if ( "${mad}" MATCHES "yes" )
+	find_package(LibMad REQUIRED)
+endif()
 if ( "${bullet}" MATCHES "yes" )
 	find_package(Bullet REQUIRED)
+	include_directories(${BULLET_INCLUDE_DIR})
 endif()
 
-include_directories(${FREETYPE_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS}/freetype)
-include_directories(${PNG_INCLUDE_DIR})
-include_directories(${BULLET_INCLUDE_DIR})
-
 set(mode SHARED)
-
 if ( "${static}" MATCHES "yes" )
 	set(mode STATIC)
 endif()
@@ -79,6 +109,10 @@ else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3")
 endif()
 
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath=./ -Wl,-rpath=/usr/lib/gammaengine -Wl,-rpath=/usr/local/lib/gammaengine" )
+set( CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -Wl,-rpath=./ -Wl,-rpath=/usr/lib/gammaengine -Wl,-rpath=/usr/local/lib/gammaengine" )
+set( CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -Wl,-rpath=./ -Wl,-rpath=/usr/lib/gammaengine -Wl,-rpath=/usr/local/lib/gammaengine" )
+
 include_directories(.)
 include_directories(include)
 #include_directories(libvulkangl/include)
@@ -96,8 +130,6 @@ set(INCLUDES
 	include/Font.h
 	include/gememory.h
 	include/Image.h
-	include/ImageLoaderJpg.h
-	include/ImageLoaderPng.h
 	include/Input.h
 	include/Instance.h
 	include/Light.h
@@ -133,6 +165,7 @@ set(INCLUDES_TARGET
 set(SOURCES ${SOURCES}
 # 	src/gememory.cpp
 	src/Instance.cpp
+	src/RenderBuffer.cpp
 	src/Light.cpp
 	src/Scene.cpp
 	src/Camera.cpp
@@ -141,10 +174,7 @@ set(SOURCES ${SOURCES}
 	src/Object.cpp
 	src/ObjectLoaderObj.cpp
 	src/Image.cpp
-	src/ImageLoaderPng.cpp
-	src/ImageLoaderJpg.cpp
 	src/Font.cpp
-	src/FontLoaderTtf.cpp
 	src/Vertex.cpp
 	src/Vector.cpp
 	src/Quaternion.cpp
@@ -166,24 +196,36 @@ if ( "${audio}" MATCHES "yes" )
 		include/Music.h
 		include/Sound.h
 		include/AudioLoaderWav.h
-		include/AudioLoaderMp3.h
 	)
 	set(SOURCES ${SOURCES}
 	# 	src/LayeredMusic.cpp
 		src/Music.cpp
 		src/Sound.cpp
 		src/AudioLoaderWav.cpp
-		src/AudioLoaderMp3.cpp
 	)
 endif()
 
-set(LIBS ${LIBS}
-	${PNG_LIBRARIES}
-	${JPEG_LIBRARIES}
-	${FREETYPE_LIBRARIES}
-	${LIBMAD_LIBRARY}
-	-pthread
-)
+set( LIBS ${LIBS} -pthread )
+
+if ( "${png}" MATCHES "yes" )
+	set( INCLUDES ${INCLUDES} include/ImageLoaderPng.h )
+	set( SOURCES ${SOURCES} src/ImageLoaderPng.cpp )
+	set( LIBS ${LIBS} ${PNG_LIBRARIES} )
+endif()
+if ( "${jpeg}" MATCHES "yes" )
+	set( INCLUDES ${INCLUDES} include/ImageLoaderJpg.h )
+	set( SOURCES ${SOURCES} src/ImageLoaderJpg.cpp )
+	set( LIBS ${LIBS} ${JPEG_LIBRARIES} )
+endif()
+if ( "${freetype}" MATCHES "yes" )
+	set( SOURCES ${SOURCES} src/FontLoaderTtf.cpp )
+	set( LIBS ${LIBS} ${FREETYPE_LIBRARIES} )
+endif()
+if ( "${audio}" MATCHES "yes" AND "${mad}" MATCHES "yes" )
+	set( INCLUDES ${INCLUDES} include/AudioLoaderMp3.h )
+	set( SOURCES ${SOURCES} src/AudioLoaderMp3.cpp )
+	set( LIBS ${LIBS} ${LIBMAD_LIBRARY} )
+endif()
 
 if ( "${bullet}" MATCHES "yes" )
 	set(SOURCES ${SOURCES} src/PhysicalBody.cpp src/PhysicalGraph.cpp src/PhysicalCollider.cpp)
@@ -219,7 +261,10 @@ else()
 	else()
 		add_definitions(-DGE_LINUX)
 		set(SOURCES ${SOURCES} src/linux/BaseWindow.cpp)
-		set(LIBS ${OPENGL_LIBRARIES} ${LIBS} ${ALSA_LIBRARY} -lX11 -lXext -lXrender -ldl -pthread)
+		set(LIBS ${OPENGL_LIBRARIES} ${LIBS} ${ALSA_LIBRARY} -lX11 -lXext -lXrender -pthread)
+		if( ${backend} MATCHES OFF )
+			set(LIBS ${LIBS} -ldl )
+		endif()
 	endif()
 	include_directories(include/linux)
 	if ( "${audio}" MATCHES "yes" )
@@ -236,6 +281,7 @@ if( ${backend} MATCHES OFF )
 #	add_subdirectory(backends/vulkan)
 	if ( NOT ${target} MATCHES "rpi*" AND NOT ${target} MATCHES "android" AND NOT ${target} MATCHES "ios" )
 		add_subdirectory(backends/opengl43)
+		add_subdirectory(backends/vulkan)
 	endif()
 	add_subdirectory(backends/opengles20)
 	add_subdirectory(backends/framebuffer)

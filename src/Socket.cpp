@@ -29,7 +29,6 @@ typedef struct in_addr IN_ADDR;
 #include "Instance.h"
 #include "Socket.h"
 #include "Debug.h"
-#include <Time.h>
 
 using namespace GE;
 
@@ -53,7 +52,7 @@ Socket::Socket( const std::string& server, unsigned short port, PortType type, i
 	, mSin( nullptr )
 {
 	if ( server != "" and port != 0 and ( type == TCP or type == UDP or type == UDPLite ) ) {
-		Connect( server, port, type );
+		Connect( server, port, type, timeout );
 	}
 }
 
@@ -124,11 +123,22 @@ int Socket::Connect( const std::string& server, short unsigned int port, PortTyp
 			struct timeval tv;
 			tv.tv_sec = timeout / 1000;
 			tv.tv_usec = 1000 * ( timeout % 1000 );
-			setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
+// 			setsockopt( mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval) );
 			fd_set set;
 			FD_ZERO( &set );
 			FD_SET( mSocket, &set );
 			ret = select( mSocket + 1, nullptr, &set, nullptr, &tv );
+			gDebug() << "ret : " << ret;
+			if ( ret == 1 ) {
+				socklen_t len = sizeof(ret);
+				getsockopt( mSocket, SOL_SOCKET, SO_ERROR, &ret, &len );
+				gDebug() << "select error : " << ret;
+				if ( ret != 0 ) {
+					ret = -1;
+				}
+			} else {
+				ret = -1;
+			}
 		}
 
 		if ( timeout > 0 and mSocket >= 0 ) {
@@ -165,7 +175,11 @@ int Socket::Send( const void* data, size_t size, int timeout )
 		setsockopt( mSocket, SOL_SOCKET, SO_SNDTIMEO, (char*)&tv, sizeof(struct timeval) );
 	}
 
-	return send( mSocket, (const char*)data, size, MSG_NOSIGNAL );
+	int flags = 0;
+#ifdef MSG_NOSIGNAL
+	flags = MSG_NOSIGNAL;
+#endif
+	return send( mSocket, (const char*)data, size, flags );
 }
 
 

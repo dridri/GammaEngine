@@ -33,6 +33,7 @@
 #include "Time.h"
 #include "Input.h"
 #include "gememory.h"
+#include "Debug.h"
 
 
 namespace GE {
@@ -131,7 +132,9 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 	mWindow = XCreateWindow( mDisplay, RootWindow( mDisplay, mVisualInfo->screen ), 0, 0, mWidth, mHeight, 0, mVisualInfo->depth, InputOutput, mVisualInfo->visual, CWBorderPixel | CWBackPixmap | CWColormap | CWEventMask | CWOverrideRedirect, mWindowAttributes );
 
 	XSetStandardProperties( mDisplay, mWindow, title.c_str(), title.c_str(), None, nullptr, 0, nullptr );
-	XMapRaised( mDisplay, mWindow );
+	if ( ( flags & Window::Hidden ) == false ) {
+		XMapRaised( mDisplay, mWindow );
+	}
 
 	if ( flags & Window::Fullscreen ) {
 // 		int unused = 0;
@@ -166,6 +169,12 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 
 BaseWindow::~BaseWindow()
 {
+	fDebug( mWindowAttributes, mWindow );
+	if ( mWindowAttributes ) {
+		mInstance->Free( mWindowAttributes );
+	}
+	XDestroyWindow( mDisplay, mWindow );
+	XCloseDisplay( mDisplay );
 }
 
 
@@ -277,10 +286,11 @@ void BaseWindow::pEventThread()
 					}
 					break;
 				case ConfigureNotify:
-					mHasResized = true;
-// 					( ( mWidth != event.xconfigure.width ) or ( mHeight != event.xconfigure.height ) );
-					mWidth = event.xconfigure.width;
-					mHeight = event.xconfigure.height;
+					if ( ( (int)mWidth != event.xconfigure.width ) or ( (int)mHeight != event.xconfigure.height ) ) {
+						mHasResized = true;
+						mWidth = event.xconfigure.width;
+						mHeight = event.xconfigure.height;
+					}
 					break;
 				case KeymapNotify:
 					XRefreshKeyboardMapping( &event.xmapping );

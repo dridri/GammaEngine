@@ -45,6 +45,12 @@ public:
 	virtual void AddLight( Light* light );
 	virtual void AddSunLight( Light* sun_light );
 	virtual void setAmbientColor( const Vector4f& color );
+	virtual void setExtraBuffersCount( uint32_t count );
+
+	virtual int LoadVertexShader( const std::string& file );
+	virtual int LoadVertexShader( const void* data, size_t size );
+	virtual int LoadFragmentShader( const std::string& file );
+	virtual int LoadFragmentShader( const void* data, size_t size );
 
 	virtual void Compute();
 	virtual void Bind();
@@ -74,6 +80,9 @@ private:
 	std::vector< Light* > mSunLights;
 	LightData* mLightsData;
 	std::unordered_map< Light*, uint32_t > mLightsDataIndices;
+	uint32_t nFlatLights;
+	uint32_t nSphereLights;
+	uint32_t nConeLights;
 
 	Vertex* mSphereVertices;
 	uint32_t mSphereVerticesCount;
@@ -92,6 +101,7 @@ private:
 	uint32_t mTextureDepth;
 	uint32_t mTextureNormals;
 	uint32_t mTexturePositions;
+	std::vector< uint32_t > mTextureExtra;
 };
 
 #endif // OPENGL43DEFERREDRENDERER_H

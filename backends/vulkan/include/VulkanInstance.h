@@ -29,41 +29,89 @@
 #define VULKANINSTANCE_H
 
 #include <string>
+#include <vector>
+#include <map>
+#include <functional>
 #include "Instance.h"
-#include "vulkan.h"
+#include "Thread.h"
+#include <vulkan/vulkan.h>
 
 namespace GE {
-	class Window;
+	template <typename T> class ProxyWindow;
+	class BaseWindow;
+	typedef ProxyWindow< BaseWindow > Window;
 	class Renderer;
 	class Vertex;
 	class Object;
+	class Image;
+	class VulkanFramebuffer;
 }
 using namespace GE;
+	void AffectVRAM( int64_t sz );
 
 class VulkanInstance : public Instance
 {
 public:
-	VulkanInstance( const char* appName, uint32_t appVersion );
+	VulkanInstance( void* pBackend, const char* appName, uint32_t appVersion );
 	virtual ~VulkanInstance(){}
 
 	virtual int EnumerateGpus();
 	virtual Instance* CreateDevice( int devid, int queueCount = 1 );
 	virtual uint64_t ReferenceImage( Image* image );
 	virtual void UnreferenceImage( uint64_t ref );
+	virtual void UpdateImageData( Image* image, uint64_t ref );
 
-	VK_MEMORY_REF AllocateObject( VK_OBJECT object );
-	VK_MEMORY_REF AllocateMappableBuffer( size_t size );
-	static void UpdateDescriptorSet( VK_DESCRIPTOR_SET descriptorSet, VK_MEMORY_VIEW_ATTACH_INFO* memoryViewAttachInfo );
+	VkInstance instance() const { return mInstance; }
+	VkPhysicalDevice gpu() const { return mGpus[mDeviceId]; }
+	VkDevice device() const { return mDevices[mDeviceId]; }
+	int32_t findQueueFamilyIndex( std::function< bool( uint32_t, VkQueueFamilyProperties* ) > cb );
+	VkQueue graphicsQueue() const { return mGraphicsQueue; }
+	VkQueue presentationQueue() const { return mPresentationQueue; }
+	VkCommandPool commandPool() const { return mCommandPool; }
+	uint32_t graphicsQueueFamilyIndex() const { return mGraphicsQueueFamilyIndex; }
+	uint32_t presentationQueueFamilyIndex() const { return mPresentationQueueFamilyIndex; }
+	VkRenderPass renderPass() const { return mRenderPass; }
+	VkRenderPass clearRenderPass() const { return mClearRenderPass; }
 
-	void QueueSubmit( VK_CMD_BUFFER buf, VK_MEMORY_REF* refs, int nRefs );
+	std::map< Thread*, VulkanFramebuffer* >& boundFramebuffers() { return mBoundFramebuffers; }
+	VulkanFramebuffer* boundFramebuffer( Thread* thread ) { return mBoundFramebuffers[thread]; }
+
+	uint32_t FindMemoryType( uint32_t typeFilter, VkMemoryPropertyFlags properties );
+	VkResult CreateBuffer( VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory );
+	VkResult CopyBuffer( VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize offset, VkDeviceSize size );
+	void TransitionImageLayout( VkImage image, VkImageAspectFlags aspect, VkImageLayout oldLayout, VkImageLayout newLayout );
+// 	VK_MEMORY_REF AllocateObject( VK_OBJECT object );
+// 	VK_MEMORY_REF AllocateMappableBuffer( size_t size );
+// 	static void UpdateDescriptorSet( VK_DESCRIPTOR_SET descriptorSet, VK_MEMORY_VIEW_ATTACH_INFO* memoryViewAttachInfo );
+
+// 	void QueueSubmit( VK_CMD_BUFFER buf, VK_MEMORY_REF* refs, int nRefs );
 
 private:
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData );
 	static void* sAlloc( size_t size, size_t align, int32_t allocType );
 	static void sFree( void* pMem );
 
-	VK_APPLICATION_INFO mAppInfo;
-	VK_ALLOC_CALLBACKS mAllocCb;
-	VK_INSTANCE mInstance;
+// 	VK_APPLICATION_INFO mAppInfo;
+// 	VK_ALLOC_CALLBACKS mAllocCb;
+// 	VK_INSTANCE mInstance;
+	VkDebugUtilsMessengerEXT mDebugMessenger;
+	std::string mAppName;
+	uint32_t mAppVersion;
+	VkInstance mInstance;
+	std::vector< VkPhysicalDevice > mGpus;
+	std::vector< VkQueueFamilyProperties > mQueueFamilyProperties;
+	std::vector< VkDevice > mDevices;
+	int32_t mDeviceId;
+	int32_t mGraphicsQueueFamilyIndex;
+	int32_t mPresentationQueueFamilyIndex;
+	VkQueue mGraphicsQueue;
+	VkQueue mPresentationQueue;
+	VkCommandPool mCommandPool;
+	VkCommandBuffer mCommandBuffer;
+
+	VkRenderPass mRenderPass;
+	VkRenderPass mClearRenderPass;
+	std::map< Thread*, VulkanFramebuffer* > mBoundFramebuffers;
 };
 
 #endif // VULKANINSTANCE_H

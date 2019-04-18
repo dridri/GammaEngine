@@ -30,22 +30,41 @@
 #include "File.h"
 #include "Camera.h"
 
+#if ( ( defined( GL_EXT_draw_instanced ) || defined( glDrawElementsInstancedEXT ) ) && !defined( GE_ANDROID ) )
+	#define DRAW_INSTANCED_AVAILABLE
+#else
+	#warning "GLES2 instancing NOT available !"
+#endif
+
 extern "C" GE::Renderer* CreateRenderer( GE::Instance* instance ) {
 	return new OpenGLES20Renderer( instance );
 }
 
 static const char* vertex_shader_include =
 #if ( !defined( GE_ANDROID ) && !defined( GE_IOS ) && !defined( GE_EGL ) )
-	"#version 130\n"
+	"#version 140\n"
 #endif
 #if ( defined( GE_ANDROID ) || defined( GE_IOS ) || defined( GE_EGL ) )
 	"#define in attribute\n"
 	"#define out varying\n"
+// 	"#define flat\n"
 #endif
 	"precision highp float;\n"
 	"#define geTexture2D(x) ge_Texture0\n"
 	"#define geTexture3D(x) ge_Texture0\n"
 	"\n"
+#ifdef GE_IOS
+	"#define GE_IOS\n"
+#endif
+#ifdef DRAW_INSTANCED_AVAILABLE
+	#ifdef GE_IOS
+		"#define ge_InstanceID gl_InstanceIDEXT\n"
+	#else
+		"#define ge_InstanceID gl_InstanceID\n"
+	#endif
+#else
+	"uniform int ge_InstanceID;\n"
+#endif
 	"in vec4 ge_VertexTexcoord;\n"
 	"in vec4 ge_VertexColor;\n"
 	"in vec4 ge_VertexNormal;\n"
@@ -67,6 +86,7 @@ static const char* fragment_shader_include =
 	"uniform sampler2D ge_Texture0;\n"
 #if ( defined( GE_ANDROID ) || defined( GE_IOS ) || defined( GE_EGL ) )
 	"#define in varying\n"
+	"#define flat\n"
 	"#define texture texture2D\n"
 #endif
 #if ( defined( GE_ANDROID ) || defined( GE_IOS ) || defined( GE_EGL ) )
@@ -86,6 +106,8 @@ OpenGLES20Renderer::OpenGLES20Renderer( Instance* instance )
 	, mRenderMode( GL_TRIANGLES )
 	, mDepthTestEnabled( false )
 	, mBlendingEnabled( false )
+	, mBlendingSrc( GL_SRC_ALPHA )
+	, mBlendingDst( GL_ONE_MINUS_SRC_ALPHA )
 	, mShader( 0 )
 	, mVertexShader( 0 )
 	, mFragmentShader( 0 )
@@ -118,11 +140,17 @@ int OpenGLES20Renderer::LoadVertexShader( const void* data, size_t size )
 	if ( mVertexShader ) {
 		glDeleteShader( mVertexShader );
 	}
-
-	const char* array[] = { vertex_shader_include, (char*)data };
 	mVertexShader = glCreateShader( GL_VERTEX_SHADER );
+
+#ifdef GE_IOS
+	char* fulldata = (char*)malloc( strlen((char*)data) + strlen(vertex_shader_include) + 2 );
+	sprintf( fulldata, "%s%s", vertex_shader_include, (char*)data );
+	glShaderSource( mVertexShader, 1, (const char**)&fulldata, NULL );
+	free( fulldata );
+#else
+	const char* array[] = { vertex_shader_include, (char*)data };
 	glShaderSource( mVertexShader, sizeof(array)/sizeof(char*), array, NULL );
-// 	glShaderSource( mVertexShader, 1, (const char**)&data, NULL );
+#endif
 	glCompileShader( mVertexShader );
 	char log[4096] = "";
 	int logsize = 4096;
@@ -147,12 +175,17 @@ int OpenGLES20Renderer::LoadFragmentShader( const void* data, size_t size )
 		glDeleteShader( mFragmentShader );
 	}
 
-	fDebug( data, size );
-
-	const char* array[] = { fragment_shader_include, (char*)data };
 	mFragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
+
+#ifdef GE_IOS
+	char* fulldata = (char*)malloc( strlen((char*)data) + strlen(fragment_shader_include) + 2 );
+	sprintf( fulldata, "%s%s", fragment_shader_include, (char*)data );
+	glShaderSource( mFragmentShader, 1, (const char**)&fulldata, NULL );
+	free( fulldata );
+#else
+	const char* array[] = { fragment_shader_include, (char*)data };
 	glShaderSource( mFragmentShader, sizeof(array)/sizeof(char*), array, NULL );
-// 	glShaderSource( mFragmentShader, 1, (const char**)&data, NULL );
+#endif
 	glCompileShader( mFragmentShader );
 	char log[4096] = "";
 	int logsize = 4096;
@@ -202,32 +235,67 @@ int OpenGLES20Renderer::LoadFragmentShader( const std::string& file )
 }
 
 
-void OpenGLES20Renderer::setRenderMode( int mode )
+void OpenGLES20Renderer::setVertexDefinition( const VertexDefinition& vertexDefinition )
 {
-	mRenderMode = mode;
+}
+
+
+void OpenGLES20Renderer::setRenderMode( const RenderMode& mode )
+{
+	switch ( mode ) {
+		case Points : { mRenderMode = GL_POINTS; break; }
+		case Lines : { mRenderMode = GL_LINES; break; }
+		case LineStrip : { mRenderMode = GL_LINE_STRIP; break; }
+		case TriangleStrip : { mRenderMode = GL_TRIANGLE_STRIP; break; }
+		case Triangles : default : { mRenderMode = GL_TRIANGLES; break; }
+	}
 }
 
 
 void OpenGLES20Renderer::setDepthTestEnabled( bool en )
 {
 	mDepthTestEnabled = en;
-	if ( en ) {
-		glEnable( GL_DEPTH_TEST );
-	} else {
-		glDisable( GL_DEPTH_TEST );
-	}
 }
 
 
-void OpenGLES20Renderer::setBlendingEnabled(bool en)
+void OpenGLES20Renderer::setBlendingEnabled( bool en )
 {
 	mBlendingEnabled = en;
-	if ( en ) {
-		glEnable( GL_BLEND );
-		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-	} else {
-		glDisable( GL_BLEND );
-	}
+}
+
+
+void OpenGLES20Renderer::setBlendingMode( BlendingMode source, BlendingMode dest )
+{
+	auto set = []( BlendingMode m, int32_t def ) {
+		switch ( m ) {
+			case Zero:
+				return GL_ZERO;
+			case One:
+				return GL_ONE;
+			case SrcColor:
+				return GL_SRC_COLOR;
+			case OneMinusSrcColor:
+				return GL_ONE_MINUS_SRC_COLOR;
+			case DstColor:
+				return GL_DST_COLOR;
+			case OneMinusDstColor:
+				return GL_ONE_MINUS_DST_COLOR;
+			case SrcAlpha:
+				return GL_SRC_ALPHA;
+			case OneMinusSrcAlpha:
+				return GL_ONE_MINUS_SRC_ALPHA;
+			case DstAlpha:
+				return GL_DST_ALPHA;
+			case OneMinusDstAlpha:
+				return GL_ONE_MINUS_DST_ALPHA;
+			default:
+				break;
+		}
+		return def;
+	};
+
+	mBlendingSrc = set( source, GL_SRC_COLOR );
+	mBlendingSrc = set( dest, GL_DST_COLOR );
 }
 
 
@@ -262,6 +330,9 @@ void OpenGLES20Renderer::createPipeline()
 	mMatrixObjectID = glGetUniformLocation( mShader, "ge_ObjectMatrix" );
 
 	mFloatTimeID = glGetUniformLocation( mShader, "ge_Time" );
+#if !( defined( DRAW_INSTANCED_AVAILABLE ) )
+	mIntInstanceID = glGetUniformLocation( mShader, "ge_InstanceID" );
+#endif
 
 	mReady = true;
 }
@@ -295,14 +366,35 @@ void OpenGLES20Renderer::AddLight( Light* light )
 }
 
 
+void OpenGLES20Renderer::VertexPoolAppend( VertexBase** pVertices, uint32_t& pVerticesPoolSize, uint32_t& pVerticesCount, VertexBase* append, uint32_t count )
+{
+	// TODO : use size of vertexDefinition instead of sizeof(Vertex)
+	if ( pVerticesCount + count > pVerticesPoolSize ) {
+		pVerticesPoolSize += ( ( count + 8192 ) / 8192 * 8192 );
+		VertexBase* vertices = (VertexBase*)mInstance->Malloc( sizeof(Vertex) * pVerticesPoolSize, false );
+		if ( *pVertices ) {
+			memcpy( vertices, *pVertices, sizeof(Vertex) * pVerticesCount );
+			mInstance->Free( *pVertices );
+		}
+		*pVertices = vertices;
+	}
+
+	memcpy( &((uint8_t*)*pVertices)[ sizeof(Vertex) * pVerticesCount ], append, sizeof(Vertex) * count );
+
+	pVerticesCount += count;
+}
+
+
 void OpenGLES20Renderer::Compute()
 {
 	if ( !mReady ) {
 		createPipeline();
 	}
 
-	std::vector< Vertex > vertices;
+	VertexBase* vertices = nullptr;
 	std::vector< uint32_t > indices;
+	uint32_t verticesPoolSize = 0;
+	uint32_t verticesCount = 0;
 
 	if ( mMatrixObjects ) {
 		for ( size_t i = 0; i < mObjects.size(); i++ ) {
@@ -316,6 +408,8 @@ void OpenGLES20Renderer::Compute()
 	mMatrixObjects = (float*)mInstance->Malloc( sizeof(float) * 16 * mObjects.size() );
 	mMatrixObjectsSize = 16 * mObjects.size();
 
+	mObjectsVerticesStart.clear();
+
 	uint32_t baseVertex = 0;
 	for ( size_t i = 0; i < mObjects.size(); i++ ) {
 		gDebug() << "Object[" << i << "] baseVertex = " << baseVertex << ( i > 0 ? ( "(" + std::to_string( mObjects[i-1]->verticesCount() ) + ")" ) : "" ) << "\n";
@@ -325,7 +419,8 @@ void OpenGLES20Renderer::Compute()
 			indices.emplace_back( baseVertex + mObjects[i]->indices()[j] );
 		}
 // 		indices.insert( indices.end(), mObjects[i]->indices(), &mObjects[i]->indices()[mObjects[i]->indicesCount()] );
-		vertices.insert( vertices.end(), mObjects[i]->vertices(), &mObjects[i]->vertices()[mObjects[i]->verticesCount()] );
+		mObjectsVerticesStart.emplace( std::make_pair( mObjects[i], baseVertex ) );
+		VertexPoolAppend( &vertices, verticesPoolSize, verticesCount, mObjects[i]->vertices(), mObjects[i]->verticesCount() );
 		baseVertex += mObjects[i]->verticesCount();
 	}
 
@@ -336,11 +431,18 @@ void OpenGLES20Renderer::Compute()
 
 	glGenBuffers( 1, &mVBO );
 	glBindBuffer( GL_ARRAY_BUFFER, mVBO );
-	glBufferData( GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW );
-	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(Vertex) * vertices.size() );
+	glBufferData( GL_ARRAY_BUFFER, verticesCount * sizeof(Vertex), vertices, GL_STATIC_DRAW );
+	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(Vertex) * verticesCount );
 
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+}
+
+
+void OpenGLES20Renderer::UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count )
+{
+	glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+	glBufferSubData( GL_ARRAY_BUFFER, offset * sizeof(Vertex), count * sizeof(Vertex), &data[offset] ); //TODO : use size of vertexDefinition
 }
 
 
@@ -354,6 +456,18 @@ void OpenGLES20Renderer::Draw()
 	if ( s2DActive ) {
 		glEnable( GL_DEPTH_TEST );
 		s2DActive = false;
+	}
+
+	if ( mBlendingEnabled ) {
+		glEnable( GL_BLEND );
+		glBlendFunc( mBlendingSrc, mBlendingDst );
+	} else {
+		glDisable( GL_BLEND );
+	}
+	if ( mDepthTestEnabled ) {
+		glEnable( GL_DEPTH_TEST );
+	} else {
+		glDisable( GL_DEPTH_TEST );
 	}
 
 	glUseProgram( mShader );
@@ -375,8 +489,19 @@ void OpenGLES20Renderer::Draw()
 
 	uint32_t iIndices = 0;
 	for ( size_t i = 0; i < mObjects.size(); i++ ) {
+		const std::vector< std::pair< Image*, uint32_t > >* textures = dynamic_cast<OpenGLES20Object*>(mObjects[i])->textures( mInstance );
+		if ( textures and textures->size() > 0 ) {
+			glBindTexture( GL_TEXTURE_2D, textures->at(0).second );
+		}
 		glUniformMatrix4fv( mMatrixObjectID, 1, GL_FALSE, mObjects[i]->matrix()->data() );
-		glDrawElements( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ) );
+#ifdef DRAW_INSTANCED_AVAILABLE
+		glDrawElementsInstancedEXT( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ), mObjects[i]->instancesCount() );
+#else
+		for ( uint32_t j = 0; j < (uint32_t)mObjects[i]->instancesCount(); j++ ) {
+			glUniform1i( mIntInstanceID, j );
+			glDrawElements( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ) );
+		}
+#endif
 		iIndices += mObjects[i]->indicesCount();
 	}
 

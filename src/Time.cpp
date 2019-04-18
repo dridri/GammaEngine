@@ -20,6 +20,7 @@
 #include <cmath>
 #include <unistd.h>
 #include <time.h>
+#include <pthread.h>
 #include <sys/time.h>
 #include <stdint.h>
 #include "include/Time.h"

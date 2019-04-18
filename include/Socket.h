@@ -33,7 +33,7 @@ public:
 
 	int rawSocket() const { return mSocket; }
 
-private:
+protected:
 	typedef struct {
 		uint8_t* p;
 		size_t s;

@@ -41,6 +41,8 @@
 
 std::map< Instance*, void* > OpenGL43Window::mGLContexts = decltype(OpenGL43Window::mGLContexts)();
 
+typedef GLXContext (*glXCreateContextAttribsARBProc)( Display*, GLXFBConfig, GLXContext, Bool, const int* );
+
 
 extern "C" GE::Window* CreateWindow( GE::Instance* instance, const std::string& title, int width, int height, OpenGL43Window::Flags flags ) {
 	return new OpenGL43Window( instance, title, width, height, flags );
@@ -122,14 +124,13 @@ OpenGL43Window::OpenGL43Window( Instance* instance, const std::string& title, in
 	
 	wglMakeCurrent( GetDC( (HWND)mWindow ), (HGLRC)mGLContext );
 
-	gDebug() << "OpenGL version : " << glGetString( GL_VERSION ) << "\n";
-
 	if ( !glext_loaded ) {
 		load_glext();
 		glext_loaded = true;
 	}
 
 #else
+/*
 	if ( mGLContexts.find( mInstance ) != mGLContexts.end() ) {
 		mGLContext = glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, (GLXContext)mGLContexts[ mInstance ], true );
 	} else {
@@ -137,8 +138,27 @@ OpenGL43Window::OpenGL43Window( Instance* instance, const std::string& title, in
 		mGLContext = glXCreateNewContext( mDisplay, mFBConfig, GLX_RGBA_TYPE, 0, True );
 		mGLContexts[ mInstance ] = mGLContext;
 	}
+*/
+	int context_attribs[] = {
+		GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
+		GLX_CONTEXT_MINOR_VERSION_ARB, 3,
+		GLX_CONTEXT_FLAGS_ARB        , GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
+		None
+	};
+	glXCreateContextAttribsARBProc glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB( (const GLubyte *) "glXCreateContextAttribsARB" );
+	if ( mGLContexts.find( mInstance ) != mGLContexts.end() ) {
+		mGLContext = glXCreateContextAttribsARB( mDisplay, mFBConfig, (GLXContext)mGLContexts[ mInstance ], true, context_attribs );
+	} else {
+		mGLContext = glXCreateContextAttribsARB( mDisplay, mFBConfig, 0, true, context_attribs );
+		mGLContexts[ mInstance ] = mGLContext;
+	}
 	glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>(mGLContext) );
 #endif
+
+	gDebug() << "OpenGL version : " << glGetString( GL_VERSION ) << "\n";
+	GLint max_textures = 0;
+	glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS, &max_textures );
+	gDebug() << "GL_MAX_TEXTURE_IMAGE_UNITS : " << max_textures;
 
 	glViewport( 0, 0, mWidth, mHeight );
 	glEnable( GL_CULL_FACE );
@@ -148,7 +168,7 @@ OpenGL43Window::OpenGL43Window( Instance* instance, const std::string& title, in
 	glEnable( GL_ALPHA_TEST );
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glPointSize( 4.0f );
+// 	glPointSize( 4.0f );
 
 	((OpenGL43Instance*)Instance::baseInstance())->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Front
 	((OpenGL43Instance*)Instance::baseInstance())->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Back

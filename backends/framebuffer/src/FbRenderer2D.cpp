@@ -67,9 +67,9 @@ void FbRenderer2D::setDepthTestEnabled( bool en )
 }
 
 
-void FbRenderer2D::setBlendingEnabled (bool en )
+void FbRenderer2D::setBlendingEnabled( bool en )
 {
-	FbRenderer::setRenderMode( en );
+	FbRenderer::setBlendingEnabled( en );
 }
 
 
@@ -178,12 +178,12 @@ void FbRenderer2D::RenderFlat( int x, int y, Image* image, int tx, int ty, int t
 					case 16 : {
 //						uint16_t color16 = ( ( color & 0xF80000 ) >> 8 ) | ( ( color & 0xFC00 ) >> 5 ) | ( ( color & 0xF8 ) >> 3 );
 						uint16_t color16 = ( ( color & 0xF80000 ) >> 19 ) | ( ( color & 0xFC00 ) >> 5 ) | ( ( color & 0xF8 ) << 8 );
-							*((uint16_t*)destinationData) = color16;
+						*((uint16_t*)destinationData) = color16;
 						break;
 					}
 					default : {
 						uint32_t color32 = ( color & 0xFF00FF00 ) | ( ( color << 16 ) & 0x00FF0000 ) | ( ( color >> 16 ) & 0x000000FF );
-						if(a >= 0x7E) *((uint32_t*)destinationData) = color32;
+						*((uint32_t*)destinationData) = color32;
 //						*destinationData = geColorMix( *destinationData, color, a ); // TODO : add Renderer2D parameter to set alpha quality
 						break;
 					}

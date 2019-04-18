@@ -74,6 +74,22 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 		}
 	}
 
+	if ( basetype == Disc ) {
+		const Vector3f prism[6] = {
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), -size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), -size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), -size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), size.z / 2.0f },
+		};
+		mFaces.emplace_back( Face( prism[0], prism[2], prism[1] ) ); // bot
+		mFaces.emplace_back( Face( prism[3], prism[4], prism[5] ) ); // top
+		for ( int i = 0; i < 1 + tesslevel; i++ ) {
+			Tesselate( NormalizeH );
+		}
+	}
+
 	if ( basetype == Cube ) {
 		const Vector3f cube[8] = {
 			{ -0.5f, -0.5f, -0.5f },
@@ -120,19 +136,19 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 		mFaces.emplace_back( Face( icosahedron[0], icosahedron[8], icosahedron[4] ) );
 		mFaces.emplace_back( Face( icosahedron[1], icosahedron[10], icosahedron[7] ) );
 		mFaces.emplace_back( Face( icosahedron[2], icosahedron[9], icosahedron[11] ) );
-		mFaces.emplace_back( Face( icosahedron[7], icosahedron[3], icosahedron[1] ) );    
+		mFaces.emplace_back( Face( icosahedron[7], icosahedron[3], icosahedron[1] ) );
 		mFaces.emplace_back( Face( icosahedron[0], icosahedron[5], icosahedron[10] ) );
 		mFaces.emplace_back( Face( icosahedron[3], icosahedron[9], icosahedron[6] ) );
 		mFaces.emplace_back( Face( icosahedron[3], icosahedron[11], icosahedron[9] ) );
-		mFaces.emplace_back( Face( icosahedron[8], icosahedron[6], icosahedron[4] ) );    
+		mFaces.emplace_back( Face( icosahedron[8], icosahedron[6], icosahedron[4] ) );
 		mFaces.emplace_back( Face( icosahedron[2], icosahedron[4], icosahedron[9] ) );
 		mFaces.emplace_back( Face( icosahedron[3], icosahedron[7], icosahedron[11] ) );
 		mFaces.emplace_back( Face( icosahedron[4], icosahedron[2], icosahedron[0] ) );
-		mFaces.emplace_back( Face( icosahedron[9], icosahedron[4], icosahedron[6] ) );    
+		mFaces.emplace_back( Face( icosahedron[9], icosahedron[4], icosahedron[6] ) );
 		mFaces.emplace_back( Face( icosahedron[2], icosahedron[11], icosahedron[5] ) );
 		mFaces.emplace_back( Face( icosahedron[0], icosahedron[10], icosahedron[8] ) );
 		mFaces.emplace_back( Face( icosahedron[5], icosahedron[0], icosahedron[2] ) );
-		mFaces.emplace_back( Face( icosahedron[10], icosahedron[5], icosahedron[7] ) );    
+		mFaces.emplace_back( Face( icosahedron[10], icosahedron[5], icosahedron[7] ) );
 		mFaces.emplace_back( Face( icosahedron[1], icosahedron[6], icosahedron[8] ) );
 		mFaces.emplace_back( Face( icosahedron[1], icosahedron[8], icosahedron[10] ) );
 		mFaces.emplace_back( Face( icosahedron[6], icosahedron[1], icosahedron[3] ) );
@@ -159,12 +175,12 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 
 	if ( basetype == Cylinder ) {
 		const Vector3f prism[6] = {
-			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), -0.5f },
-			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), -0.5f },
-			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), -0.5f },
-			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f },
-			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f },
-			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), -size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), -size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), -size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 0.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 0.0f / 3.0f ), size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 1.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 1.0f / 3.0f ), size.z / 2.0f },
+			{ 0.5f * size.x * std::cos( (float)M_PI * 2.0f * 2.0f / 3.0f ), 0.5f * size.y * std::sin( (float)M_PI * 2.0f * 2.0f / 3.0f ), size.z / 2.0f },
 		};
 		mFaces.emplace_back( Face( prism[0], prism[2], prism[1] ) ); // bot
 		mFaces.emplace_back( Face( prism[3], prism[4], prism[5] ) ); // top
@@ -177,7 +193,7 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 		
 		mFaces.emplace_back( Face( prism[2], prism[3], prism[5] ) );
 		mFaces.emplace_back( Face( prism[0], prism[3], prism[2] ) );
-		for ( int i = 0; i < 2 + tesslevel; i++ ) {
+		for ( int i = 0; i < 1 + tesslevel; i++ ) {
 			Tesselate( NormalizeH );
 		}
 	}
@@ -271,6 +287,25 @@ void MeshBuilder::SinglePassFaces( MeshBuilder::MeshBuilderPassCb cb, void* cbda
 {
 	for ( size_t i = 0; i < mFaces.size(); i++ ) {
 		cb( cbdata, &mFaces[i] );
+	}
+}
+
+
+void MeshBuilder::RemoveFaces( std::function<bool(Face*)> cb )
+{
+	for ( size_t i = 0; i < mFaces.size(); i++ ) {
+		if ( !cb( &mFaces[i] ) ) {
+			mFaces.erase( mFaces.begin() + i );
+			--i;
+		}
+	}
+}
+
+
+void MeshBuilder::SinglePassFaces( std::function<void(Face*)> cb )
+{
+	for ( size_t i = 0; i < mFaces.size(); i++ ) {
+		cb( &mFaces[i] );
 	}
 }
 

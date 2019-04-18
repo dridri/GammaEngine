@@ -30,17 +30,16 @@
 
 #include <string>
 
+#include <vulkan/vulkan.h>
 #include "Window.h"
 #include "BaseWindow.h"
-#include <vulkan.h>
+#include "VulkanFramebuffer.h"
 
 namespace GE {
-	class Instance;
-};
 
-using namespace GE;
+class Instance;
 
-class VulkanWindow : public Window
+class VulkanWindow : public GE::Window
 {
 public:
 	VulkanWindow( Instance* instance, const std::string& title, int width, int height, Flags flags );
@@ -56,24 +55,43 @@ public:
 	virtual uint64_t CreateSharedContext();
 	virtual void BindSharedContext( uint64_t ctx );
 
+	VkSurfaceKHR surface() const { return mSurface; }
+	const std::vector<VulkanFramebuffer*>& framebuffers() const { return mSwapChainFramebuffers; }
+
 private:
+	typedef struct {
+		VkSurfaceCapabilitiesKHR capabilities;
+		std::vector<VkSurfaceFormatKHR> formats;
+		std::vector<VkPresentModeKHR> presentModes;
+	} SwapChainSupportDetails;
+	SwapChainSupportDetails querySwapChainSupport( VkPhysicalDevice device );
+
 	void InitPresentableImage();
+	void createRenderPass();
+	void createClearCommandBuffers();
 
-	VK_IMAGE mColorImage;
-	VK_MEMORY_REF mColorImageMemRef;
-	VK_IMAGE_SUBRESOURCE_RANGE mImageColorRange;
-	VK_COLOR_TARGET_VIEW mColorTargetView;
+	VkSurfaceKHR mSurface;
+	VkSurfaceFormatKHR mSurfaceFormat;
+	VkExtent2D mSwapChainExtent;
+	VkSwapchainKHR mSwapChain;
+	std::vector<VkImage> mSwapChainImages;
+	std::vector<VkImageView> mSwapChainImageViews;
+	VkImage mDepthImage;
+	VkDeviceMemory mDepthImageMemory;
+	VkImageView mDepthImageView;
+// 	VkRenderPass mRenderPass;
+	std::vector<VulkanFramebuffer*> mSwapChainFramebuffers;
 
-	VK_IMAGE mDepthImage;
-	VK_MEMORY_REF mDepthImageMemRef;
-	VK_IMAGE_SUBRESOURCE_RANGE mImageDepthRange;
-	VK_DEPTH_STENCIL_VIEW mDepthTargetView;
+	VkSemaphore mImageAvailableSemaphores[2];
+// 	VkSemaphore mRenderFinishedSemaphores[2];
+	VkFence mInFlightFences[2];
 
-	VK_CMD_BUFFER mBindCmdBuffer;
-	VK_CMD_BUFFER mClearCmdBuffer;
-
+	uint32_t mBackImageIndex;
+	std::vector< VkCommandBuffer > mClearCommandBuffers;
 	uint32_t mClearColor;
 };
+
+}; // namespace GE
 
 #endif // VULKANWINDOW_H
  

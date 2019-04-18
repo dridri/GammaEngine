@@ -1,6 +1,7 @@
 #include "Input.h"
 #include "BaseWindow.h"
 #include "Vector.h"
+#include "../../include/Time.h"
 #import "AppDelegate.h"
 #include <fstream>
 
@@ -28,6 +29,9 @@ static int _ge_mouse_x = 0;
 static int _ge_mouse_y = 0;
 static int _ge_mouse_wrap_x = 0;
 static int _ge_mouse_wrap_y = 0;
+
+static bool mApplicationPaused = false;
+static uint64_t mPauseTime = 0;
 
 @implementation AppDelegate
 
@@ -143,6 +147,11 @@ static int _ge_mouse_wrap_y = 0;
 {
     // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
     // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
+    if ( not mApplicationPaused ) {
+		mApplicationPaused = true;
+		mPauseTime = GE::Time::GetTick();
+		gDebug() << "APPLICATION PAUSED\n";
+	}
 }
 
 
@@ -162,6 +171,11 @@ static int _ge_mouse_wrap_y = 0;
 - (void)applicationDidBecomeActive:(UIApplication *)application
 {
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+    if ( mApplicationPaused ) {
+		GE::Time::IncreasePause( GE::Time::GetTick() - mPauseTime );
+		mApplicationPaused = false;
+		gDebug() << "APPLICATION RESUMED\n";
+	}
 }
 
 
@@ -264,9 +278,16 @@ void _ge_iOSSwapBuffer( Vector2i& mCursor, Vector2i& mCursorWarp )
 	[ _ge_eagl_window_context presentRenderbuffer:GL_RENDERBUFFER ];
 	
 	SInt32 result;
-	do {
-		result = CFRunLoopRunInMode( kCFRunLoopDefaultMode, 0, TRUE );
-	} while( result == kCFRunLoopRunHandledSource );
+	while ( true ) {
+		do {
+			result = CFRunLoopRunInMode( kCFRunLoopDefaultMode, 0, TRUE );
+		} while( result == kCFRunLoopRunHandledSource );
+		if ( mApplicationPaused ) {
+			GE::Time::Sleep( 50 );
+		} else {
+			break;
+		}
+	}
 
 	mCursor.x = _ge_mouse_x;
 	mCursor.y = _ge_mouse_y;

@@ -18,18 +18,16 @@ std::mutex Debug::mLogMutex;
 
 #ifdef GE_ANDROID
 #include <android/log.h>
-static std::string str;
-void Debug::log( const std::string& s ) {
+void Debug::log( const std::string& s_ ) {
 	mLogMutex.lock();
-	str = str + s;
 
-	int pos = -1;
-	if ( str.find( "\n" ) > 0 ) {
-		while ( ( pos = str.find( "\n" ) ) > 0 ) {
-			std::string sub = str.substr( 0, pos );
-			(void)__android_log_print( ANDROID_LOG_INFO, "GE", "%s", sub.c_str() );
-			str = str.substr( pos + 1 );
-		}
+	std::string s = s_;
+	if ( s.length() >= 2 and s.at(s.length()-1) == '\n' and s.at(s.length()-2) == '\n' ) {
+		s =  s.substr( 0, s.length() - 1 );
+	}
+	(void)__android_log_print( ANDROID_LOG_INFO, "GE", "%s", s.c_str() );
+	if ( mStoreLog ) {
+		mLog += s;
 	}
 
 	mLogMutex.unlock();

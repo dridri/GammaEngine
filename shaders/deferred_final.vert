@@ -1,6 +1,6 @@
 // /!\ Shader designed for OpenGL43 backend /!\
 
-#version 420 core
+#version 430 core
 
 layout(location = 0) in vec3 ge_VertexTexcoord;
 layout(location = 1) in vec4 ge_VertexColor;

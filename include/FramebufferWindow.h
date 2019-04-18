@@ -70,6 +70,7 @@ protected:
 	bool mFramebufferAllocated;
 
 	int64_t mSystemFbHandler;
+	uint8_t mCurrentBuffer;
 
 	float mFps;
 	int mFpsImages;

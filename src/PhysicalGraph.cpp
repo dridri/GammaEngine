@@ -79,5 +79,6 @@ void PhysicalGraph::Update( float ndt )
 	if ( std::abs( dt ) == 0.0 ) {
 		return;
 	}
-	mDynamicsWorld->stepSimulation( dt/*, true, ndt*/ );
+	gDebug() << "step with " << dt;
+	mDynamicsWorld->stepSimulation( dt, 1, dt );
 }

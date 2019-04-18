@@ -1,6 +1,6 @@
 // /!\ Shader designed for OpenGL43 backend /!\
 
-#version 420 core
+#version 430 core
 
 uniform sampler2D ge_Texture0;
 uniform usampler2D ge_Texture1;
@@ -14,6 +14,7 @@ flat in vec3 ge_LightDir;
 flat in float ge_LightAttenuation;
 flat in float ge_LightInnerAngle;
 flat in float ge_LightOuterAngle;
+out vec4 ge_FragColor;
 
 
 float Attenuate( float d, float kc, float kl, float kq )
@@ -50,11 +51,11 @@ void main()
 	vec2 screenSize = textureSize( ge_Texture0, 0 ).xy;
 	vec2 texcoords = gl_FragCoord.xy / screenSize;
 // 	vec2 texcoords = VR_Distort( gl_FragCoord.xy ) / screenSize;
-	float depth = float(texture2D(ge_Texture1, texcoords.st).r) / 65535.0;
+	float depth = float(texture(ge_Texture1, texcoords.st).r) / 65535.0;
 	gl_FragDepth = depth;
 
 	if ( ge_LightAttenuation < -1.0 ) {
-		gl_FragColor = ge_Color * texture2D( ge_Texture0, texcoords );
+		ge_FragColor = ge_Color * texture2D( ge_Texture0, texcoords );
 	} else if ( ge_LightAttenuation < 0.0 ) {
 		vec4 scene_color = texture2D( ge_Texture0, texcoords );
 		vec3 normal = texture2D( ge_Texture2, texcoords ).xyz * 2.0 - vec3(1.0);
@@ -64,8 +65,8 @@ void main()
 		vec3 L = normalize(ge_LightPos.xyz - position);
 		float lambertTerm = max(dot(normal, L), 0.0);
 		if ( lambertTerm >= 0.0 ) {
-			gl_FragColor.rgb = ge_Color.a * ge_Color.rgb * scene_color.rgb * lambertTerm;// * Attenuate( dist, 1.0, 0.0, 0.0f );
-			gl_FragColor.a = scene_color.a;
+			ge_FragColor.rgb = ge_Color.a * ge_Color.rgb * scene_color.rgb * lambertTerm;// * Attenuate( dist, 1.0, 0.0, 0.0f );
+			ge_FragColor.a = scene_color.a;
 		}
 	} else {
 		if ( depth > gl_FragCoord.z ) {
@@ -80,18 +81,18 @@ void main()
 		float lambertTerm = max(dot(normal, L), 0.0);
 		if ( lambertTerm >= 0.0 ) {
 			if ( ge_LightInnerAngle >= 360.0 ) {
-				gl_FragColor.rgb = ge_Color.a * ge_Color.rgb * scene_color.rgb * lambertTerm * Attenuate( dist, 1.0, 0.0, ge_LightAttenuation );
+				ge_FragColor.rgb = ge_Color.a * ge_Color.rgb * scene_color.rgb * lambertTerm * Attenuate( dist, 1.0, 0.0, ge_LightAttenuation );
 			} else {
 				float cos_cur_angle = dot(-L, ge_LightDir.xyz);
 				float spot = clamp((cos_cur_angle - ge_LightOuterAngle) / ge_LightInnerAngle, 0.0, 1.0);
-				gl_FragColor.rgb = ge_Color.a * ge_Color.rgb * scene_color.rgb * lambertTerm * spot * Attenuate( dist, 1.0, 0.0, ge_LightAttenuation );
+				ge_FragColor.rgb = ge_Color.a * ge_Color.rgb * scene_color.rgb * lambertTerm * spot * Attenuate( dist, 1.0, 0.0, ge_LightAttenuation );
 				if ( dist <= 0.1 ) {
-					gl_FragColor.rgb += 2.0 * ge_Color.rgb;
+					ge_FragColor.rgb += 2.0 * ge_Color.rgb;
 				}
 			}
-			gl_FragColor.a = scene_color.a;
+			ge_FragColor.a = scene_color.a;
 		}
-// 		gl_FragColor += vec4(0.1);
+// 		ge_FragColor += vec4(0.1, 0.0, 0.0, 1.0);
 	}
 }
 

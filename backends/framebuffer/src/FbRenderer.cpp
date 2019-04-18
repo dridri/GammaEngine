@@ -99,9 +99,9 @@ int FbRenderer::LoadFragmentShader( const std::string& file )
 }
 
 
-void FbRenderer::setRenderMode( int mode )
+void FbRenderer::setRenderMode( const RenderMode& mode )
 {
-	mRenderMode = mode;
+// 	mRenderMode = mode;
 }
 
 

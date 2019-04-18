@@ -31,7 +31,7 @@ namespace GE {
 std::vector< ObjectLoader* > Object::mObjectLoaders = std::vector< ObjectLoader* >();
 static bool ObjectLoaderFirstCall = true;
 
-Object::Object( Vertex* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices )
+Object::Object( VertexBase* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices )
 	: mName( "" )
 	, mVertices( verts )
 	, mVerticesCount( nVerts )
@@ -225,7 +225,7 @@ uint32_t Object::indicesCount() const
 }
 
 
-Vertex* Object::vertices() const
+VertexBase* Object::vertices() const
 {
 	return mVertices;
 }
@@ -268,6 +268,14 @@ void Object::CreateInstances( int count )
 		Matrix* mat = new Matrix();
 		memcpy( mat->data(), mMatrix->data(), sizeof(float) * 16 );
 		mMatrices.emplace_back( mat );
+	}
+}
+
+
+void Object::RemoveInstance( uint32_t idx )
+{
+	if ( idx < mMatrices.size() ) {
+		mMatrices.erase( mMatrices.begin() + idx );
 	}
 }
 

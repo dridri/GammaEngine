@@ -75,20 +75,75 @@ private:
 
 void TEST()
 {
-	FBDevThread* fbdev_thread = new FBDevThread();
+	Instance* instance = Instance::Create( "test::vulkan", 42, true, "vulkan" );
+	Window* window = instance->CreateWindow( "test::vulkan", 1280, 720, Window::Resizable );
 
-	while ( 1 ) {
-		usleep( 1000000 );
+	Object* cube = instance->LoadObject( "scene/cube.obj" );
+
+	Renderer* render = instance->CreateRenderer();
+	render->LoadVertexShader( "shaders_vulkan/basic.vert.spv" );
+	render->LoadFragmentShader( "shaders_vulkan/basic.frag.spv" );
+// 	render->LoadVertexShader( "shaders/basic.vert" );
+// 	render->LoadFragmentShader( "shaders/basic.frag" );
+	render->AddObject( cube );
+	render->Compute();
+// 	exit(0);
+
+	std::list< Object* > scene_objects = Object::LoadObjects( "scene/street.obj", true, instance );
+	std::vector<Object*> objects{ std::begin(scene_objects), std::end(scene_objects) };
+	Renderer* render2 = instance->CreateRenderer();
+	render2->LoadVertexShader( "shaders_vulkan/basic.vert.spv" );
+	render2->LoadFragmentShader( "shaders_vulkan/basic.frag.spv" );
+// 	render->LoadVertexShader( "shaders/basic.vert" );
+// 	render->LoadFragmentShader( "shaders/basic.frag" );
+	for ( auto obj : objects ) {
+		render2->AddObject( obj );
 	}
-/*
-	Instance* instance = Instance::Create( "test::gles20", 42, false, "opengles20" );
-	Window* window = instance->CreateWindow( "test::gles20", 1280, 720, 0 );
+	render2->Compute();
+
+	Input* input = new Input( window );
+
+	Camera* camera = new Camera();
+	camera->setInertia( 0.999f );
+	camera->LookAt( { -6.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } );
 
 	while ( 1 ) {
+		input->Update();
+		if ( input->pressed( 'E' ) ) {
+			camera->WalkForward( 10.0 );
+		}
+		if ( input->pressed( 'D' ) ) {
+			camera->WalkBackward( 10.0 );
+		}
+		if ( input->pressed( 'S' ) ) {
+			camera->WalkLeft( 10.0 );
+		}
+		if ( input->pressed( 'F' ) ) {
+			camera->WalkRight( 10.0 );
+		}
+		if ( input->pressed( ' ' ) ) {
+			camera->Translate( { 0.0f, 0.0f, (float)( 10.0 * Time::Delta() ) } );
+		}
+		if ( input->pressed( 'C' ) ) {
+			camera->Translate( { 0.0f, 0.0f, (float)( -10.0 * Time::Delta() ) } );
+		}
+		if ( input->pressed( Input::LBUTTON ) ) {
+			camera->RotateH( input->cursorWarp().x, -2.0f );
+			camera->RotateV( input->cursorWarp().y, -2.0f );
+		}
+
+		window->BindTarget();
 		window->Clear( 0xFF202020 );
+
+		render->Look( camera );
+		render->Draw();
+		render2->Look( camera );
+		render2->Draw();
+
 		window->SwapBuffers();
+		Time::GlobalSync();
 	}
-*/
+
 }
 
 
@@ -104,7 +159,8 @@ public:
 	}
 protected:
 	virtual bool run() {
-		mWorld->Update( 1.0f / 60.0f );
+		mWorld->Update( ( Time::GetTick() - mLastTicks ) / 1000.0f/*1.0f / 60.0f*/ );
+		mLastTicks = mTicks;
 		mTicks = Time::WaitTick( 1000 / 60, mTicks );
 		Time::GlobalSync();
 		return true;
@@ -112,13 +168,14 @@ protected:
 private:
 	PhysicalGraph* mWorld;
 	uint64_t mTicks;
+	uint64_t mLastTicks;
 };
 
 
 int main( int argc, char** argv )
 {
-//	TEST();
-//	return 0;
+	TEST();
+	return 0;
 
 	Instance* instance = Instance::Create( "GammaEngse test", 42, true, "opengl43" );
 	Window* window = instance->CreateWindow( "Hello GammaEngine !", 1280, 720, Window::Resizable );
@@ -142,11 +199,11 @@ int main( int argc, char** argv )
 
 	Light* sun_light = new Light( Vector4f( 1.0, 1.0, 1.0, 1.0 ), Vector3f( 10000000.0f, 5000000.0f, 10000000.0f ), 0.0f );
 	Light* lightm1 = new Light( Vector4f( 1.0, 1.0, 1.0, 4.0 ), Vector3f( 2.8f, 25.0f, 5.9f ) );
-	Light* light0 = new Light( Vector4f( 1.0, 1.0, 1.0, 8.0 ), Vector3f( 2.8f, 0.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 30.0f, 50.0f );
-	Light* light1 = new Light( Vector4f( 1.0, 1.0, 1.0, 8.0 ), Vector3f( 2.8f, -25.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 30.0f, 50.0f );
-	Light* light2 = new Light( Vector4f( 1.0, 1.0, 1.0, 8.0 ), Vector3f( 2.8f, -50.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 30.0f, 50.0f );
-	Light* light3 = new Light( Vector4f( 1.0, 1.0, 1.0, 8.0 ), Vector3f( 2.8f, -75.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 30.0f, 50.0f );
-	Light* light4 = new Light( Vector4f( 1.0, 1.0, 1.0, 8.0 ), Vector3f( 2.8f, -100.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 30.0f, 50.0f );
+	Light* light0 = new Light( Vector4f( 1.0, 1.0, 1.0, 4.0 ), Vector3f( 2.8f, 0.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 45.0f, 70.0f );
+	Light* light1 = new Light( Vector4f( 1.0, 1.0, 1.0, 4.0 ), Vector3f( 2.8f, -25.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 45.0f, 70.0f );
+	Light* light2 = new Light( Vector4f( 1.0, 1.0, 1.0, 4.0 ), Vector3f( 2.8f, -50.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 45.0f, 70.0f );
+	Light* light3 = new Light( Vector4f( 1.0, 1.0, 1.0, 4.0 ), Vector3f( 2.8f, -75.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 45.0f, 70.0f );
+	Light* light4 = new Light( Vector4f( 1.0, 1.0, 1.0, 4.0 ), Vector3f( 2.8f, -100.0f, 5.9f ), Vector3f( -0.4f, 0.0f, -1.0f ), 45.0f, 70.0f );
 
 
 	Renderer* renderer = instance->CreateRenderer();
@@ -175,9 +232,10 @@ int main( int argc, char** argv )
 	for ( int k = 0; k < cubes_side; k++ ) {
 		for ( int j = 0; j < cubes_side; j++ ) {
 			for ( int i = 0; i < cubes_side; i++ ) {
-				PhysicalBody* cube_body = new PhysicalBody( Vector3f( i, j, k + 42.0f ), 10.0f );
+				PhysicalBody* cube_body = new PhysicalBody( Vector3f( i, j, k + 42.0f ), 0.001f );
 				cube_body->setBox( Vector3f( -0.5f, -0.5f, -0.5f ), Vector3f( 0.5f, 0.5f, 0.5f ) );
 				cube_body->setTarget( cubes[k*cubes_side*cubes_side + j*cubes_side + i] );
+				cube_body->setFriction(1.0f);
 				world->AddBody( cube_body );
 			}
 		}
@@ -185,6 +243,7 @@ int main( int argc, char** argv )
 	for ( auto it = scene_objects.begin(); it != scene_objects.end(); ++it ) {
 		PhysicalBody* body = new PhysicalBody( (*it)->position(), 0.0f );
 		body->setMesh( *it, false, true );
+		body->setFriction(1.0f);
 		world->AddBody( body );
 	}
 

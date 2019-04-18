@@ -53,6 +53,7 @@ extern "C" int XInitThreads(void);
 #else
 	#include <dlfcn.h>
 	void* LoadLib( const std::string& file ) {
+		std::cout << file << "\n";
 		return dlopen( file.c_str(), RTLD_LAZY );
 	}
 	void* SymLib( void* lib, const char* name ) {
@@ -97,7 +98,8 @@ extern "C" Window* CreateWindow( Instance*, const std::string&, int, int, int );
 extern "C" Renderer* CreateRenderer( Instance* );
 extern "C" Renderer2D* CreateRenderer2D( Instance*, uint32_t, uint32_t );
 extern "C" DeferredRenderer* CreateDeferredRenderer( Instance*, uint32_t, uint32_t );
-extern "C" Object* CreateObject( Vertex*, uint32_t, uint32_t*, uint32_t );
+extern "C" RenderBuffer* CreateRenderBuffer( Instance*, uint32_t, uint32_t );
+extern "C" Object* CreateObject( VertexBase*, uint32_t, uint32_t*, uint32_t );
 extern "C" Object* LoadObject( const std::string&, Instance* );
 
 Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_instance, const std::string& backend_file )
@@ -140,7 +142,13 @@ DeferredRenderer* Instance::CreateDeferredRenderer( uint32_t width, uint32_t hei
 }
 
 
-Object* Instance::CreateObject( Vertex* verts, uint32_t nVert, uint32_t* indices, uint32_t nIndices )
+RenderBuffer* Instance::CreateRenderBuffer( uint32_t width, uint32_t height )
+{
+	return ::CreateRenderBuffer( this, width, height );
+}
+
+
+Object* Instance::CreateObject( VertexBase* verts, uint32_t nVert, uint32_t* indices, uint32_t nIndices )
 {
 	return ::CreateObject( verts, nVert, indices, nIndices );
 }
@@ -253,9 +261,17 @@ DeferredRenderer* Instance::CreateDeferredRenderer( uint32_t width, uint32_t hei
 }
 
 
-Object* Instance::CreateObject( Vertex* verts, uint32_t nVert, uint32_t* indices, uint32_t nIndices )
+RenderBuffer* Instance::CreateRenderBuffer( uint32_t width, uint32_t height )
 {
-	typedef Object* (*f_type)( Vertex*, uint32_t, uint32_t*, uint32_t );
+	typedef RenderBuffer* (*f_type)( Instance*, uint32_t, uint32_t );
+	f_type fCreateRenderBuffer = (f_type)SymLib( backend(), "CreateRenderBuffer" );
+	return fCreateRenderBuffer( this, width, height );
+}
+
+
+Object* Instance::CreateObject( VertexBase* verts, uint32_t nVert, uint32_t* indices, uint32_t nIndices )
+{
+	typedef Object* (*f_type)( VertexBase*, uint32_t, uint32_t*, uint32_t );
 	f_type fCreateObject = (f_type)SymLib( backend(), "CreateObject" );
 	return fCreateObject( verts, nVert, indices, nIndices );
 }
@@ -295,7 +311,9 @@ void* Instance::Memalign( uintptr_t size, uintptr_t align, bool clear_mem )
 	var[0] = addr;
 // 	var[1] = size;
 	var[1] = fullSize;
-	memset( (void*)(uintptr_t)&var[2], 0x0, size );
+	if ( clear_mem ) {
+		memset( (void*)(uintptr_t)&var[2], 0x0, size );
+	}
 // 	mCpuRamCounter += size;
 	mCpuRamCounter += fullSize;
 	return (void*)(uintptr_t)&var[2];

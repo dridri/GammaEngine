@@ -34,7 +34,8 @@ typedef ProxyWindow< BaseWindow > Window;
 class Renderer;
 class Renderer2D;
 class DeferredRenderer;
-class Vertex;
+class RenderBuffer;
+class VertexBase;
 class Image;
 class Object;
 
@@ -56,8 +57,9 @@ public:
 	Window* CreateWindow( const std::string& title, int width, int height, int flags = 0 );
 	Renderer* CreateRenderer();
 	Renderer2D* CreateRenderer2D( uint32_t width = 0, uint32_t height = 0 );
-	DeferredRenderer* CreateDeferredRenderer( uint32_t width, uint32_t height );
-	Object* CreateObject( Vertex* verts = nullptr, uint32_t nVerts = 0, uint32_t* indices = nullptr, uint32_t nIndices = 0 );
+	DeferredRenderer* CreateDeferredRenderer( uint32_t width = 0, uint32_t height = 0 );
+	RenderBuffer* CreateRenderBuffer( uint32_t width = 0, uint32_t height = 0 );
+	Object* CreateObject( VertexBase* verts = nullptr, uint32_t nVerts = 0, uint32_t* indices = nullptr, uint32_t nIndices = 0 );
 	Object* LoadObject( const std::string& filename );
 // 	std::vector< Object* > LoadObjects( const std::string& filename );
 
@@ -111,11 +113,20 @@ protected:
 #if ( defined( GE_ANDROID ) )
 #include <sstream>
 namespace std {
+#ifndef to_string
 template<typename T> static inline string to_string(const T& t) {
 	ostringstream os;
 	os << t;
 	return os.str();
 }
+#endif
+#ifndef to_wstring
+template<typename T> static inline wstring to_wstring(const T& t) {
+	wstringstream os;
+	os << t;
+	return os.str();
+}
+#endif
 }
 #endif
 

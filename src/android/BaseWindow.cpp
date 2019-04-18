@@ -319,9 +319,11 @@ void BaseWindow::engine_handle_cmd( struct android_app* app, int32_t cmd )
 			break;
 		case APP_CMD_GAINED_FOCUS:
 			gDebug() << "APP_CMD_GAINED_FOCUS\n";
-// 			ge_ResumeAllThreads(); // TODO
-			Time::IncreasePause( Time::GetTick() - mPauseTime );
-			mEngine->gotFocus = true;
+			if ( not mEngine->gotFocus ) {
+// 				ge_ResumeAllThreads(); // TODO
+				Time::IncreasePause( Time::GetTick() - mPauseTime );
+				mEngine->gotFocus = true;
+			}
 			break;
 		case APP_CMD_LOST_FOCUS:
 			gDebug() << "APP_CMD_LOST_FOCUS\n";
@@ -333,10 +335,12 @@ void BaseWindow::engine_handle_cmd( struct android_app* app, int32_t cmd )
 			}
 			mKeys[ Input::LBUTTON ] = false;
 			mEngine->cursorId = -1;
-// 			ge_PauseAllThreads(); // TODO
-			mPauseTime = Time::GetTick();
-			mEngine->gotFocus = false;
-			mEngine->justLostFocus = true;
+			if ( mEngine->gotFocus ) {
+// 				ge_PauseAllThreads(); // TODO
+				mPauseTime = Time::GetTick();
+				mEngine->gotFocus = false;
+				mEngine->justLostFocus = true;
+			}
 			break;
 	}
 }
@@ -398,8 +402,8 @@ int32_t BaseWindow::engine_handle_input( struct android_app* app, AInputEvent* e
 				if ( j == pointer_index ) {
 					touch->action = action;
 				}
-				touch->x = AMotionEvent_getX( event, j ) * engine->width / ANativeWindow_getWidth( engine->app->window );
-				touch->y = AMotionEvent_getY( event, j ) * engine->height / ANativeWindow_getHeight( engine->app->window );
+				touch->x = ( AMotionEvent_getX( event, j ) - engine->ofsx ) * engine->width / engine->holderWidth;
+				touch->y = ( AMotionEvent_getY( event, j ) - engine->ofsy ) * engine->height / engine->holderHeight;
 				touch->force = AMotionEvent_getPressure( event, j );
 				if ( engine->cursorId < 0 || ( touch->id <= engine->cursorId && touch->used ) ) {
 					if ( action == AMOTION_EVENT_ACTION_DOWN || action == AMOTION_EVENT_ACTION_POINTER_DOWN ) {
@@ -413,7 +417,7 @@ int32_t BaseWindow::engine_handle_input( struct android_app* app, AInputEvent* e
 					engine->cursorId = touch->id;
 					Vector2i lastCursor = mCursor;
 					mCursor.x = (int)touch->x;
-					mCursor.y = (int)touch->y - engine->ofsy * engine->height / ANativeWindow_getHeight( engine->app->window );
+					mCursor.y = (int)touch->y;
 // 					if ( !engine->last_cPress ) {
 // 						mouse_last_x = libge_context->mouse_x;
 // 						mouse_last_y = libge_context->mouse_y;
@@ -470,6 +474,13 @@ void BaseWindow::PollEvents()
 }
 
 
+void BaseWindow::SetAdmobPublisherID( const std::string& id )
+{
+	fDebug( id );
+	// TODO
+}
+
+
 void BaseWindow::ShowInterstitialAd()
 {
 	fDebug();
@@ -482,12 +493,14 @@ void BaseWindow::ShowInterstitialAd()
 }
 
 
-extern "C" JNIEXPORT void JNICALL Java_com_drich_libge_LibGE_setSurface( JNIEnv* env, jobject obj, jobject surface, jint ofsx, jint ofsy )
+extern "C" JNIEXPORT void JNICALL Java_com_drich_libge_LibGE_setSurface( JNIEnv* env, jobject obj, jobject surface, jint ofsx, jint ofsy, int width, int height )
 {
-	fDebug( env, obj, surface, ofsx, ofsy );
+	fDebug( env, obj, surface, ofsx, ofsy, width, height );
 	BaseWindow::androidEngine()->aJavaSurface = surface;
 	BaseWindow::androidEngine()->ofsx = ofsx;
 	BaseWindow::androidEngine()->ofsy = ofsy;
+	BaseWindow::androidEngine()->holderWidth = width;
+	BaseWindow::androidEngine()->holderHeight = height;
 	BaseWindow::androidEngine()->aSurface = ANativeWindow_fromSurface( env, surface );
 	gDebug() << " ===> " << BaseWindow::androidEngine()->aSurface << "\n";
 }
@@ -525,7 +538,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_drich_libge_LibGE_AndroidInit( JNIEnv
 
 extern "C" JNIEXPORT void JNICALL Java_com_drich_libge_LibGE_setAdsVisible( JNIEnv* env, jobject obj, jboolean en )
 {
-	fDebug( env, obj, en );
+	fDebug( env, obj, (bool)en );
 	BaseWindow::mAdsVisible = en;
 }
 

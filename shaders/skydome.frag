@@ -2,9 +2,9 @@
 
 #version 430 core
 #extension GL_ARB_explicit_uniform_location : require
-#extension GL_ARB_bindless_texture : require
+// #extension GL_ARB_bindless_texture : require
 
-layout(location = 32) uniform float ge_Time;
+layout(location = 64) uniform float ge_Time;
 
 const float g = 0.990;
 
@@ -17,8 +17,9 @@ uniform vec3 v3SunPos2 = vec3(5000000.0, -10000000.0, 10000000.0);
 in vec3 vpos;
 in vec3 sumR;
 in vec3 sumM;
-in sampler2D ge_RandTexture;
+// in sampler2D ge_RandTexture;
 in vec3 v3SunColor;
+out vec4 ge_FragColor;
 
 vec3 sun_color = vec3(1.0);
 vec3 sun_far_color = vec3(1.0);
@@ -43,18 +44,18 @@ void main()
 {
 	vec3 color = CalcSun( v3SunPos );
 // 	color += CalcSun( v3SunPos2 );
-	gl_FragColor = vec4(color, 1.0);
-//	gl_FragColor.a = clamp(3.0 * (color.r + color.g + color.b), 0.0, 1.0);
-	gl_FragColor.a = clamp(3.0*color.r + 2.0*color.g + 1.5*color.b, 0.4, 1.0);
+	ge_FragColor = vec4(color, 1.0);
+//	ge_FragColor.a = clamp(3.0 * (color.r + color.g + color.b), 0.0, 1.0);
+	ge_FragColor.a = clamp(3.0*color.r + 2.0*color.g + 1.5*color.b, 0.4, 1.0);
 
 	float fExposure = 6.0;
-	gl_FragColor.rgb = vec3(1.0) - exp2( -fExposure * gl_FragColor.rgb );
+	ge_FragColor.rgb = vec3(1.0) - exp2( -fExposure * ge_FragColor.rgb );
 
-	gl_FragColor.a = 1.0;
+	ge_FragColor.a = 1.0;
 
 	vec4 clouds = ComputeClouds( vpos, v3CameraPos );
 	clouds.rgb = clouds.rgb * 0.4 + vec3( ( clouds.r + clouds.g + clouds.b ) / 3.0 ) * 0.6;
-	gl_FragColor.rgb = clouds.rgb * clouds.a + gl_FragColor.rgb * ( 1.0 - clouds.a );
+	ge_FragColor.rgb = clouds.rgb * clouds.a + ge_FragColor.rgb * ( 1.0 - clouds.a );
 
 //	gl_FragDepth = 1.0;
 }
@@ -73,8 +74,8 @@ void main()
 
 
 
-// uniform float cover = 220.0;
-uniform float cover = 50.0;
+uniform float cover = 220.0;
+// uniform float cover = 50.0;
 uniform float sharpness = 0.97;
 uniform float scale = 0.001;
 

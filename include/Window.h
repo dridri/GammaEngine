@@ -34,6 +34,7 @@ public:
 		Nil = 0,
 		Resizable = 1,
 		Fullscreen = 2,
+		Hidden = 4,
 	} Flags;
 	ProxyWindow( Instance* instance, const std::string& title, int width, int height, ProxyWindow::Flags flags = Nil ) : T( instance, title, width, height, (uint32_t)flags ) {}
 	virtual ~ProxyWindow(){};

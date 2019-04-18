@@ -9,6 +9,8 @@ else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3")
 endif()
 
+add_definitions( -DVK_USE_PLATFORM_XLIB_KHR )
+
 if(WIN32)
 	add_definitions(-DGE_WIN32)
 	include_directories(../../include/windows)
@@ -25,12 +27,13 @@ add_library(backend_vulkan
 	src/VulkanObject.cpp
 	src/VulkanRenderer.cpp
 	src/VulkanWindow.cpp
+	src/VulkanFramebuffer.cpp
 	src/VulkanInstance.cpp
 )
 
 add_dependencies(backend_vulkan gammaengine)
 
 SET_TARGET_PROPERTIES(backend_vulkan PROPERTIES PREFIX "")
-target_link_libraries(backend_vulkan gammaengine -lvulkangl -pthread)
+target_link_libraries(backend_vulkan gammaengine -lvulkan -pthread)
 
 INSTALL(TARGETS backend_vulkan ARCHIVE DESTINATION /usr/lib/gammaengine LIBRARY DESTINATION /usr/lib/gammaengine)

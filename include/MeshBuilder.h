@@ -21,6 +21,7 @@
 #define GE_MESHBUILDER_H
 
 #include <vector>
+#include <functional>
 #include "Vertex.h"
 #include "Vector.h"
 
@@ -38,6 +39,7 @@ public:
 
 	typedef enum {
 		Plane,
+		Disc,
 		Cube,
 		Sphere,
 		Cylinder,
@@ -57,6 +59,8 @@ public:
 	void Translate( const Vector3f& vec );
 	void RemoveFaces( MeshBuilderRemoveCb cb, void* cbdata = nullptr );
 	void SinglePassFaces( MeshBuilderPassCb cb, void* cbdata = nullptr );
+	void RemoveFaces( std::function<bool(Face*)> cb );
+	void SinglePassFaces( std::function<void(Face*)> cb );
 
 	void GenerateVertexArray( Instance* instance, Vertex** verts, uint32_t* nVerts );
 	void GenerateIndexedVertexArray( Instance* instance, Vertex** verts, uint32_t* nVerts, uint32_t** indices, uint32_t* nIndices, bool invert_faces = false );

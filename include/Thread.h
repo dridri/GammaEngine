@@ -20,6 +20,7 @@
 #ifndef GE_THREAD_H
 #define GE_THREAD_H
 
+#include <map>
 #include <thread>
 #include <pthread.h>
 
@@ -33,6 +34,8 @@ typedef ProxyWindow< BaseWindow > Window;
 class Thread
 {
 public:
+	static Thread* MainThread;
+
 	Thread( Window* shared_graphics_window = nullptr );
 	virtual ~Thread();
 
@@ -41,6 +44,8 @@ public:
 	void Stop();
 	void Join();
 	bool running();
+
+	static Thread* currentThread();
 
 protected:
 	virtual bool run() = 0;
@@ -55,6 +60,7 @@ private:
 	bool mFinished;
 // 	std::thread* mThread;
 	pthread_t mThread;
+	static std::map< pthread_t, Thread* > mThreads;
 };
 
 }

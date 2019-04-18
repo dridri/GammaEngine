@@ -29,7 +29,7 @@
 #define VULKANRENDERER_H
 
 #include <vector>
-#include "vulkan.h"
+#include <vulkan/vulkan.h>
 #include "Renderer.h"
 #include "VulkanObject.h"
 #include "Light.h"
@@ -39,6 +39,7 @@ namespace GE {
 	class Object;
 	class Camera;
 	class Matrix;
+	class VulkanFramebuffer;
 }
 using namespace GE;
 
@@ -54,14 +55,19 @@ public:
 	virtual int LoadGeometryShader( const void* data, size_t size );
 	virtual int LoadFragmentShader( const std::string& file );
 	virtual int LoadFragmentShader( const void* data, size_t size );
-	void setRenderMode( int mode );
 
-	void AddObject( Object* obj );
+	virtual void setVertexDefinition( const VertexDefinition& vertexDefinition );
+	virtual void setRenderMode( const RenderMode& mode );
+	virtual void setDepthTestEnabled( bool en );
+	virtual void setBlendingEnabled( bool en );
+	virtual void setBlendingMode( BlendingMode source, BlendingMode dest );
+
+	virtual void AddObject( Object* obj );
 	virtual void AddLight( Light* light );
 
-	void Compute();
-	void Draw();
-	void Look( Camera* cam );
+	virtual void Compute();
+	virtual void Draw();
+	virtual void Look( Camera* cam );
 
 	virtual Matrix* projectionMatrix();
 
@@ -73,24 +79,38 @@ public:
 	virtual void uniformUpload( const uintptr_t id, const Vector4f& v );
 	virtual void uniformUpload( const uintptr_t id, const Matrix& v );
 
+	void PopulateCommandBuffer( VkCommandBuffer buffer );
+
 private:
 	uint8_t* loadShader( const std::string& filename, size_t* sz );
 	void createPipeline();
+	void VertexPoolAppend( VertexBase** pVertices, uint32_t& pVerticesPoolSize, uint32_t& pVerticesCount, VertexBase* append, uint32_t count );
 
 	bool mReady;
-	Instance* mInstance;
+	VulkanInstance* mInstance;
 
 	Matrix* mMatrixProjection;
 	Matrix* mMatrixView;
+	float* mMatrixObjects;
+	VertexDefinition mVertexDefinition;
 	std::vector< VulkanObject* > mObjects;
 	std::vector< Light* > mLights;
 
-	VK_CMD_BUFFER mCmdBuffer;
-	VK_PIPELINE mPipeline;
-	VK_MEMORY_REF mPipelineRef;
-	VK_SHADER mVertexShader;
-	VK_SHADER mFragmentShader;
+	std::map< VulkanFramebuffer*, VkCommandBuffer > mRenderCommandBuffers;
+	std::map< VulkanFramebuffer*, uint64_t > mFramebuffersHashes;
+	VkCommandBuffer mCommandBuffer;
+// 	VK_MEMORY_REF mPipelineRef;
+	VkShaderModule mVertexShader;
+	VkShaderModule mFragmentShader;
+	VkDescriptorSetLayout mDescriptorSetLayout;
+	VkPipelineLayout mPipelineLayout;
+	VkPipeline mPipeline;
 
+	VkDescriptorPool mDescriptorPool;
+	std::pair< VkDeviceMemory, VkBuffer > mUniformsBuffer;
+	VkDescriptorSet mUniformsDescriptorSet;
+
+	uint32_t mTotalObjectsInstances;
 	int mRenderMode;
 };
 

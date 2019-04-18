@@ -18,6 +18,7 @@
  */
 
 #include "OpenGLES20Instance.h"
+#include "OpenGLES20Renderer.h"
 #include "OpenGLES20Object.h"
 #include "File.h"
 #include "Image.h"
@@ -28,7 +29,7 @@
 
 using namespace GE;
 
-extern "C" GE::Object* CreateObject( Vertex* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices ) {
+extern "C" GE::Object* CreateObject( VertexBase* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices ) {
 	return new OpenGLES20Object( verts, nVerts, indices, nIndices );
 }
 
@@ -37,7 +38,7 @@ extern "C" GE::Object* LoadObject( const std::string filename, Instance* instanc
 }
 
 
-OpenGLES20Object::OpenGLES20Object( Vertex* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices )
+OpenGLES20Object::OpenGLES20Object( VertexBase* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices )
 	: Object( verts, nVerts, indices, nIndices )
 {
 }
@@ -81,7 +82,19 @@ void OpenGLES20Object::setTexture( Instance* instance, int unit, Image* texture 
 }
 
 
-void OpenGLES20Object::UpdateVertices( Instance* instance, Vertex* verts, uint32_t offset, uint32_t count )
+void OpenGLES20Object::ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count )
+{
+	OpenGLES20Renderer* rdr = dynamic_cast<OpenGLES20Renderer*>(renderer);
+	if ( rdr != nullptr ) {
+		const std::map< Object*, uint32_t >& starts = rdr->objectsVerticesStart();
+		if ( starts.find( this ) != starts.end() ) {
+			rdr->UpdateVertexArray( mVertices, offset, count );
+		}
+	}
+}
+
+
+void OpenGLES20Object::UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count )
 {
 }
 

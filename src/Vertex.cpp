@@ -38,6 +38,18 @@ bool Vertex::operator==( const Vertex& other ) const
 	return memcmp( this, &other, sizeof( Vertex ) ) == 0;
 }
 
+
+VertexDefinition Vertex::vertexDefinition()
+{
+	VertexDefinition def( sizeof(Vertex) );
+	def.addAttribute( 0, 4, VertexDefinition::Float32, sizeof(Vertex), 0 );
+	def.addAttribute( 1, 4, VertexDefinition::Float32, sizeof(Vertex), sizeof( float ) * 4 );
+	def.addAttribute( 2, 4, VertexDefinition::Float32, sizeof(Vertex), sizeof( float ) * 4 * 2 );
+	def.addAttribute( 3, 4, VertexDefinition::Float32, sizeof(Vertex), sizeof( float ) * 4 * 3 );
+	return def;
+}
+
+
 Vertex2D::Vertex2D( const Vector2f& pos, const Vector4f& color, const Vector2f& texcoords )
 	: color( COLORf( color.x, color.y, color.z, color.w ) )
 	, u( texcoords.x ), v( texcoords.y )
@@ -49,6 +61,16 @@ Vertex2D::Vertex2D( const Vector2f& pos, const Vector4f& color, const Vector2f& 
 bool Vertex2D::operator==( const Vertex2D& other ) const
 {
 	return memcmp( this, &other, sizeof( Vertex2D ) ) == 0;
+}
+
+
+VertexDefinition Vertex2D::vertexDefinition()
+{
+	VertexDefinition def( sizeof(Vertex2D) );
+	def.addAttribute( 0, 4, VertexDefinition::UInt8, sizeof(Vertex2D), 0 );
+	def.addAttribute( 1, 2, VertexDefinition::Float32, sizeof(Vertex2D), sizeof( uint32_t ) );
+	def.addAttribute( 2, 2, VertexDefinition::Float32, sizeof(Vertex2D), sizeof( uint32_t ) + sizeof( float ) * 2 );
+	return def;
 }
 
 

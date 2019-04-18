@@ -1,24 +1,13 @@
 // /!\ Shader designed for OpenGL43 backend /!\
 
-#version 420 core
-#extension GL_ARB_bindless_texture : require
-/*
-flat in sampler2D ge_Texture0;
-flat in sampler2D ge_Texture1;
-flat in int ge_Texture0Base;
-flat in float ge_HasTexture;
-flat in uint ge_TextureCount;
-in vec4 ge_Color;
-in vec3 ge_TextureCoord;
-in vec3 ge_Normal;
-in vec3 ge_Position;
-// in mat3 tangentToWorld;
-*/
+#version 430
+// #extension GL_ARB_bindless_texture : require
 
-flat in sampler2D ge_Textures[8];
+layout(location = 16 /* 17 18 .. 47 */) uniform sampler2D ge_Textures[32];
 
+// flat in sampler2D ge_Textures[8];
 in VertexData {
-	flat uint ge_Texture0Base;
+	flat uint ge_TextureBase;
 	flat uint ge_TextureCount;
 	vec4 ge_Color;
 	vec3 ge_TextureCoord;
@@ -37,12 +26,11 @@ void main()
 
 	if ( VertexIn.ge_TextureCount > 0 ) {
 		ge_FragColor = VertexIn.ge_Color;
-		ge_FragColor = VertexIn.ge_Color * texture2D( ge_Textures[0], VertexIn.ge_TextureCoord.xy );
+		ge_FragColor = VertexIn.ge_Color * texture2D( ge_Textures[VertexIn.ge_TextureBase + 0], VertexIn.ge_TextureCoord.xy );
 	} else {
 		ge_FragColor = VertexIn.ge_Color;
 	}
 
 	ge_FragDepth = uint( gl_FragCoord.z * 65535.0 );
 	ge_FragPosition = VertexIn.ge_Position;
-// 	ge_FragColor.a = 1.0;
 }

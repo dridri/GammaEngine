@@ -61,7 +61,7 @@ public:
 	virtual int LoadFragmentShader( const std::string& file );
 	virtual int LoadFragmentShader( const void* data, size_t size );
 
-	virtual void setRenderMode( int mode );
+	virtual void setRenderMode( const RenderMode& mode );
 	virtual void setDepthTestEnabled( bool en );
 	virtual void setBlendingEnabled( bool en );
 

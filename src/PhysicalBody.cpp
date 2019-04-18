@@ -111,7 +111,8 @@ void PhysicalBody::setMesh( Object* object, bool set_target, bool _static )
 		delete mMesh;
 	}
 
-	mMesh = new btTriangleIndexVertexArray( object->indicesCount() / 3, (int*)object->indices(), 3 * sizeof( uint32_t ), object->verticesCount(), &object->vertices()[0].x, sizeof( Vertex ) );
+	//TODO : use object->vertexDefinition
+	mMesh = new btTriangleIndexVertexArray( object->indicesCount() / 3, (int*)object->indices(), 3 * sizeof( uint32_t ), object->verticesCount(), (float*)&object->vertices()[0], sizeof( Vertex ) );
 	if ( _static ) {
 		mShape = new btBvhTriangleMeshShape( mMesh, true, true );
 	} else {

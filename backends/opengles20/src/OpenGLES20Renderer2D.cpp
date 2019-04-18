@@ -60,7 +60,7 @@ static const char fragment_shader_base[] =
 "\n"
 "	void main()\n"
 "	{\n"
-"		ge_FragColor = ge_Color * texture( ge_Texture0, ge_TextureCoord.xy );\n"
+"		ge_FragColor = /*ge_Color * */texture( ge_Texture0, ge_TextureCoord.xy );\n"
 "	}\n"
 ;
 
@@ -97,9 +97,9 @@ void OpenGLES20Renderer2D::setDepthTestEnabled( bool en )
 }
 
 
-void OpenGLES20Renderer2D::setBlendingEnabled (bool en )
+void OpenGLES20Renderer2D::setBlendingEnabled( bool en )
 {
-	OpenGLES20Renderer::setRenderMode( en );
+	OpenGLES20Renderer::setBlendingEnabled( en );
 }
 
 

@@ -38,7 +38,7 @@
 extern "C" GE::Renderer2D* CreateRenderer2D( GE::Instance* instance, uint32_t width, uint32_t height ) {
 	return new OpenGL43Renderer2D( instance, width, height );
 }
-static const char vertices_shader_base[] = GLSL(420,
+static const char vertices_shader_base[] = GLSL(430,
 	layout(location = 0) in vec3 ge_VertexTexcoord;
 	layout(location = 1) in vec4 ge_VertexColor;
 	layout(location = 2) in vec3 ge_VertexNormal;
@@ -65,14 +65,15 @@ static const char vertices_shader_base[] = GLSL(420,
 	}
 );
 
-static const char fragment_shader_base[] = GLSL(420,
+static const char fragment_shader_base[] = GLSL(430,
 	uniform sampler2D ge_Texture0;
 	in vec4 ge_Color;
 	in vec3 ge_TextureCoord;
+	out vec4 ge_FragColor;
 
 	void main()
 	{
-		gl_FragColor = ge_Color * texture2D( ge_Texture0, ge_TextureCoord.xy );
+		ge_FragColor = ge_Color * texture2D( ge_Texture0, ge_TextureCoord.xy );
 	}
 );
 
@@ -110,9 +111,9 @@ void OpenGL43Renderer2D::setDepthTestEnabled( bool en )
 }
 
 
-void OpenGL43Renderer2D::setBlendingEnabled (bool en )
+void OpenGL43Renderer2D::setBlendingEnabled( bool en )
 {
-	OpenGL43Renderer::setRenderMode( en );
+	OpenGL43Renderer::setBlendingEnabled( en );
 }
 
 
@@ -170,6 +171,7 @@ void OpenGL43Renderer2D::Compute()
 
 	glGenBuffers( 1, &mMatrixProjectionID );
 	glGenBuffers( 1, &mMatrixViewID );
+	glGenBuffers( 1, &mMatrixObjectID );
 	glGenBuffers( 1, &mVBO );
 
 	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixProjectionID );

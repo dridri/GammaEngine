@@ -59,6 +59,39 @@ Matrix* OpenGLES20DeferredRenderer::projectionMatrix()
 }
 
 
+int OpenGLES20DeferredRenderer::LoadVertexShader( const void* data, size_t size )
+{
+	m2DReady = false;
+	return OpenGLES20Renderer::LoadVertexShader( data, size );
+}
+
+
+int OpenGLES20DeferredRenderer::LoadVertexShader( const std::string& file )
+{
+	m2DReady = false;
+	return OpenGLES20Renderer::LoadVertexShader( file );
+}
+
+
+int OpenGLES20DeferredRenderer::LoadFragmentShader( const void* data, size_t size )
+{
+	m2DReady = false;
+	return OpenGLES20Renderer::LoadFragmentShader( data, size );
+}
+
+
+int OpenGLES20DeferredRenderer::LoadFragmentShader( const std::string& file )
+{
+	m2DReady = false;
+	return OpenGLES20Renderer::LoadFragmentShader( file );
+}
+
+
+void OpenGLES20DeferredRenderer::setExtraBuffersCount( uint32_t count )
+{
+}
+
+
 void OpenGLES20DeferredRenderer::setAmbientColor( const Vector4f& color )
 {
 }

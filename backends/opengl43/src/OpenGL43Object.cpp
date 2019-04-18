@@ -19,6 +19,7 @@
 
 #include "OpenGL43Instance.h"
 #include "OpenGL43Object.h"
+#include "OpenGL43Renderer.h"
 #include "File.h"
 #include "Image.h"
 #include "Debug.h"
@@ -28,7 +29,7 @@
 
 using namespace GE;
 
-extern "C" GE::Object* CreateObject( Vertex* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices ) {
+extern "C" GE::Object* CreateObject( VertexBase* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices ) {
 	return new OpenGL43Object( verts, nVerts, indices, nIndices );
 }
 
@@ -37,7 +38,7 @@ extern "C" GE::Object* LoadObject( const std::string filename, Instance* instanc
 }
 
 
-OpenGL43Object::OpenGL43Object( Vertex* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices )
+OpenGL43Object::OpenGL43Object( VertexBase* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices )
 	: Object( verts, nVerts, indices, nIndices )
 {
 }
@@ -81,8 +82,20 @@ void OpenGL43Object::setTexture( Instance* instance, int unit, Image* texture )
 }
 
 
-void OpenGL43Object::UpdateVertices( Instance* instance, Vertex* verts, uint32_t offset, uint32_t count )
+void OpenGL43Object::UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count )
 {
+}
+
+
+void OpenGL43Object::ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count )
+{
+	OpenGL43Renderer* rdr = dynamic_cast<OpenGL43Renderer*>(renderer);
+	if ( rdr != nullptr ) {
+// 		const std::map< Object*, uint32_t >& starts = rdr->objectsVerticesStart();
+// 		if ( starts.find( this ) != starts.end() ) {
+// 			rdr->UpdateVertexArray( mVertices, offset, count );
+// 		}
+	}
 }
 
 

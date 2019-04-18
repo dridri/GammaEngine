@@ -84,11 +84,18 @@ static inline std::string className(const std::string& prettyFunction)
 	return "\x1B[32m" + prettyFunction.substr(begin,end) + "\x1B[0m";
 }
 
+
 #pragma GCC system_header // HACK Disable unused-function warnings
 static std::string self_thread() {
+#ifdef GE_ANDROID
+	return "";
+#endif
 	std::stringstream ret;
-	char name[128];
+	char name[128] = "";
+	memset( name, 0, sizeof(name) );
+#ifdef pthread_getname_np
 	pthread_getname_np( pthread_self(), name, sizeof(name)-1 );
+#endif
 	ret << "\x1B[33m" << "[" << name << "] " << "\x1B[0m";
 	return ret.str();
 }
@@ -105,7 +112,8 @@ template<typename Arg1, typename... Args> static void fDebug_base( std::stringst
 	char* type = abi::__cxa_demangle(typeid(arg1).name(), nullptr, nullptr, nullptr);
 	char cap = 0;
 	std::string color = "\x1B[0m";
-	if ( strstr( type, "char" ) ) {
+// 	out << "[TYPE:" << type << "]";
+	if ( strstr( type, "char" ) || strstr( type, "string" ) ) {
 		if ( strstr( type, "*" ) || ( strstr( type, "[" ) && strstr( type, "]" ) ) || strstr( type, "string" ) ) {
 			cap = '\"';
 			color = "\x1B[31m";
@@ -114,13 +122,27 @@ template<typename Arg1, typename... Args> static void fDebug_base( std::stringst
 			color = "\x1B[31m";
 		}
 	}
-	free(type);
 
 	std::stringstream arg_ss;
-	arg_ss << arg1;
-	if ( arg_ss.str()[0] >= '0' && arg_ss.str()[0] <= '9' ) {
-		color = "\x1B[36m";
+	if ( strstr( type, "bool" ) ) {
+		bool valid = false;
+		arg_ss << arg1;
+		if ( arg_ss.str()[0] == '0' ) {
+			color = "\x1B[91m";
+			arg_ss.str("");
+			arg_ss << "false";
+		} else {
+			color = "\x1B[92m";
+			arg_ss.str("");
+			arg_ss << "true";
+		}
+	} else {
+		arg_ss << arg1;
+		if ( ( arg_ss.str()[0] >= '0' && arg_ss.str()[0] <= '9' ) || ( ( arg_ss.str()[0] == '-' || arg_ss.str()[0] == '+' ) && arg_ss.str()[1] >= '0' && arg_ss.str()[1] <= '9' ) ) {
+			color = "\x1B[36m";
+		}
 	}
+	free(type);
 
 	if (!first ) {
 		out << ", ";

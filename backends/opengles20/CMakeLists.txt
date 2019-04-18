@@ -34,6 +34,7 @@ add_library(backend_opengles20
 	src/OpenGLES20Object.cpp
 	src/OpenGLES20Renderer.cpp
 	src/OpenGLES20Renderer2D.cpp
+	src/OpenGLES20RenderBuffer.cpp
 	src/OpenGLES20DeferredRenderer.cpp
 	src/OpenGLES20Window.cpp
 	src/OpenGLES20Instance.cpp

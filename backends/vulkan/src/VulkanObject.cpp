@@ -35,8 +35,8 @@
 
 using namespace GE;
 
-extern "C" GE::Object* CreateObject( Vertex* verts, uint32_t nVerts ) {
-	return new VulkanObject( verts, nVerts );
+extern "C" GE::Object* CreateObject( Vertex* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices ) {
+	return new VulkanObject( verts, nVerts, indices, nIndices );
 }
 
 extern "C" GE::Object* LoadObject( const std::string filename, Instance* instance ) {
@@ -44,8 +44,14 @@ extern "C" GE::Object* LoadObject( const std::string filename, Instance* instanc
 }
 
 
-VulkanObject::VulkanObject( Vertex* verts, uint32_t nVerts )
-	: Object( verts, nVerts )
+VulkanObject::VulkanObject()
+	: Object( 0, 0 )
+{
+}
+
+
+VulkanObject::VulkanObject( Vertex* verts, uint32_t nVerts, uint32_t* indices, uint32_t nIndices )
+	: Object( verts, nVerts, indices, nIndices )
 {
 }
 
@@ -61,7 +67,7 @@ VulkanObject::~VulkanObject()
 // 	Object::~Object();
 }
 
-
+/*
 VK_DESCRIPTOR_SET VulkanObject::descriptorSet( Instance* instance )
 {
 	if ( mVkRefs.find( instance ) == mVkRefs.end() ){
@@ -90,128 +96,104 @@ VK_MEMORY_REF VulkanObject::indicesRef( Instance* instance )
 
 	return std::get<3>( mVkRefs.at( instance ) );
 }
-
-
-void VulkanObject::AllocateGpu( Instance* instance )
-{
-	VK_DESCRIPTOR_SET descriptorSet = {};
-	VK_MEMORY_REF descriptorMemRef = {};
-	VK_MEMORY_REF vertexDataMemRef = {};
-	VK_MEMORY_REF matrixMemRef = {};
-	VK_CMD_BUFFER_CREATE_INFO bufferCreateInfo = { 0, 0 };
-	void* bufferPointer = nullptr;
-
-	VK_DESCRIPTOR_SET_CREATE_INFO descriptorCreateInfo = {};
-	descriptorCreateInfo.slots = 5;
-	vkCreateDescriptorSet( instance->device(), &descriptorCreateInfo, &descriptorSet );
-	descriptorMemRef = ((VulkanInstance*)instance)->AllocateObject( descriptorSet );
-
-
-	vertexDataMemRef = ((VulkanInstance*)instance)->AllocateMappableBuffer( sizeof( Vertex ) * mVerticesCount );
-	vkMapMemory( vertexDataMemRef.mem, 0, &bufferPointer );
-	if ( bufferPointer ) {
-		memcpy( bufferPointer, mVertices, sizeof( Vertex ) * mVerticesCount );
-		vkUnmapMemory( vertexDataMemRef.mem );
-	} else {
-		gDebug() << "Error : vkMapMemory(vertexDataMemRef) returned null pointer\n";
-	}
-
-
-	matrixMemRef = ((VulkanInstance*)instance)->AllocateMappableBuffer( sizeof( float ) * 16 );
-	vkMapMemory( matrixMemRef.mem, 0, &bufferPointer );
-	if ( bufferPointer ) {
-		memcpy( bufferPointer, mMatrix->data(), sizeof( float ) * 16 );
-		vkUnmapMemory( matrixMemRef.mem );
-	} else {
-		gDebug() << "Error : vkMapMemory(matrixMemRef) returned null pointer\n";
-	}
-
-
-	VK_CMD_BUFFER initDataCmdBuffer;
-	vkCreateCommandBuffer( instance->device(), &bufferCreateInfo, &initDataCmdBuffer );
-	vkBeginCommandBuffer( initDataCmdBuffer, 0 );
-		VK_MEMORY_STATE_TRANSITION dataTransition = {};
-		dataTransition.mem = vertexDataMemRef.mem;
-		dataTransition.oldState = VK_MEMORY_STATE_DATA_TRANSFER;
-		dataTransition.newState = VK_MEMORY_STATE_GRAPHICS_SHADER_READ_ONLY;
-		dataTransition.offset = 0;
-		dataTransition.regionSize = sizeof( Vertex ) * mVerticesCount;
-		vkCmdPrepareMemoryRegions( initDataCmdBuffer, 1, &dataTransition );
-	vkEndCommandBuffer( initDataCmdBuffer );
-	((VulkanInstance*)instance)->QueueSubmit( initDataCmdBuffer, &vertexDataMemRef, 1 );
-
-
-	vkBeginDescriptorSetUpdate( descriptorSet );
-		VK_MEMORY_VIEW_ATTACH_INFO memoryViewAttachInfo = {};
-		memoryViewAttachInfo.state = VK_MEMORY_STATE_GRAPHICS_SHADER_READ_ONLY;
-		memoryViewAttachInfo.mem = vertexDataMemRef.mem;
-		memoryViewAttachInfo.range = sizeof( Vertex ) * mVerticesCount;
-
-		VulkanInstance::UpdateDescriptorSet( descriptorSet, &memoryViewAttachInfo );
-
-		/// HACK / TBD
-		// VulkanObject matrix
-		memoryViewAttachInfo.state = VK_MEMORY_STATE_GRAPHICS_SHADER_READ_ONLY;
-		memoryViewAttachInfo.mem = matrixMemRef.mem;
-		memoryViewAttachInfo.stride = 0;
-		memoryViewAttachInfo.range = sizeof( float ) * 16;
-		memoryViewAttachInfo.offset = 0;
-		memoryViewAttachInfo.format.channelFormat = VK_CH_FMT_R32G32B32A32;
-		memoryViewAttachInfo.format.numericFormat = VK_NUM_FMT_FLOAT;
-		vkAttachMemoryViewDescriptors( descriptorSet, 12, 1, &memoryViewAttachInfo );
-		// END HACK / TBD
-
-	vkEndDescriptorSetUpdate( descriptorSet );
-
-
-	VK_MEMORY_REF indexMemRef = ((VulkanInstance*)instance)->AllocateMappableBuffer( sizeof(uint32_t) * mIndicesCount );
-	vkMapMemory( indexMemRef.mem, 0, &bufferPointer );
-	if ( bufferPointer ) {
-		memcpy( bufferPointer, mIndices, sizeof(uint32_t) * mIndicesCount );
-		vkUnmapMemory( indexMemRef.mem );
-	} else {
-		gDebug() << "Error : vkMapMemory(indexMemRef) returned null pointer\n";
-	}
-
-/*	TEST
-	vkBeginCommandBuffer( initDataCmdBuffer, 0 );
-		VK_MEMORY_STATE_TRANSITION dataTransition = {};
-		dataTransition.mem = indexMemRef.mem;
-		dataTransition.oldState = VK_MEMORY_STATE_DATA_TRANSFER;
-		dataTransition.newState = VK_MEMORY_STATE_GRAPHICS_SHADER_READ_ONLY; // TEST VK_MEMORY_STATE_MULTI_SHADER_READ_ONLY
-		dataTransition.offset = 0;
-		dataTransition.regionSize = sizeof( decltype(mIndices) ) * mIndicesCount;
-		vkCmdPrepareMemoryRegions( initDataCmdBuffer, 1, &dataTransition );
-	vkEndCommandBuffer( initDataCmdBuffer );
-	instance->QueueSubmit( devid, initDataCmdBuffer, &indexMemRef, 1 );
 */
 
-	std::tuple< VK_DESCRIPTOR_SET, VK_MEMORY_REF, VK_MEMORY_REF, VK_MEMORY_REF, VK_MEMORY_REF > data( descriptorSet, descriptorMemRef, vertexDataMemRef, indexMemRef, matrixMemRef );
-	mVkRefs.insert( std::pair< decltype(instance), decltype(data) > ( instance, data ) );
+/*
+VkCommandBuffer& VulkanObject::commandBuffer( VulkanInstance* instance )
+{
+	if ( mCommandBuffers.find( instance ) == mCommandBuffers.end() ){
+		AllocateGpu( instance );
+	}
+	return mCommandBuffers[instance];
+}
+*/
+
+VkBuffer& VulkanObject::vertexBuffer( VulkanInstance* instance )
+{
+	if ( mVertexBuffers.find( instance ) == mVertexBuffers.end() ) {
+		AllocateGpu( instance );
+	}
+	return mVertexBuffers[instance].second;
 }
 
 
-void VulkanObject::UpdateVertices( Instance* instance, Vertex* verts, uint32_t offset, uint32_t count )
+VkBuffer& VulkanObject::indicesBuffer( VulkanInstance* instance )
 {
-	if ( mVkRefs.find( instance ) == mVkRefs.end() ) {
-		return;
+	if ( mIndicesCount == 0 ) {
+		static VkBuffer _null_buffer = VK_NULL_HANDLE;
+		return _null_buffer;
 	}
-
-	VK_MEMORY_REF vertexDataMemRef = std::get<2>( mVkRefs.at( instance ) );
-	void* bufferPointer = nullptr;
-
-	vkMapMemory( vertexDataMemRef.mem, 0, &bufferPointer );
-	if ( bufferPointer ) {
-		memcpy( (void*)( (uint64_t)bufferPointer + sizeof( Vertex ) * offset ), verts, sizeof( Vertex ) * count );
-		vkUnmapMemory( vertexDataMemRef.mem );
-	} else {
-		gDebug() << "Error : vkMapMemory(vertexDataMemRef) returned null pointer\n";
+	if ( mIndicesBuffers.find( instance ) == mIndicesBuffers.end() ) {
+		AllocateGpu( instance );
 	}
+	return mIndicesBuffers[instance].second;
+}
+
+
+void VulkanObject::AllocateGpu( VulkanInstance* instance )
+{
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	instance->CreateBuffer( mVerticesCount * Vertex::vertexDefinition().size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
+	mVertexBuffers[instance] = std::make_pair( stagingBufferMemory, stagingBuffer );
+	UpdateVertices( instance, mVertices, 0, mVerticesCount );
+	if ( mIndicesCount > 0 ) {
+		instance->CreateBuffer( mIndicesCount * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
+		mIndicesBuffers[instance] = std::make_pair( stagingBufferMemory, stagingBuffer );
+		UpdateIndices( instance, mIndices, 0, mIndicesCount );
+	}
+}
+
+
+void VulkanObject::UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count )
+{
+	VulkanInstance* inst = static_cast<VulkanInstance*>(instance);
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	uint32_t bufferOffset = offset * Vertex::vertexDefinition().size();
+	uint32_t bufferSize = count * Vertex::vertexDefinition().size();
+
+	inst->CreateBuffer( bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory );
+	void* data;
+	vkMapMemory( inst->device(), stagingBufferMemory, 0, bufferSize, 0, &data );
+	memcpy( data, verts, (size_t)bufferSize );
+	vkUnmapMemory( inst->device(), stagingBufferMemory );
+
+	inst->CopyBuffer( mVertexBuffers[inst].second, stagingBuffer, bufferOffset, bufferSize );
+
+	vkDestroyBuffer( inst->device(), stagingBuffer, nullptr );
+	vkFreeMemory( inst->device(), stagingBufferMemory, nullptr );
+}
+
+
+void VulkanObject::UpdateIndices( Instance* instance, uint32_t* indices, uint32_t offset, uint32_t count )
+{
+	VulkanInstance* inst = static_cast<VulkanInstance*>(instance);
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	uint32_t bufferOffset = offset * sizeof(uint32_t);
+	uint32_t bufferSize = count * sizeof(uint32_t);
+
+	inst->CreateBuffer( bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory );
+	void* data;
+	vkMapMemory( inst->device(), stagingBufferMemory, 0, bufferSize, 0, &data );
+	memcpy( data, indices, (size_t)bufferSize );
+	vkUnmapMemory( inst->device(), stagingBufferMemory );
+	inst->CopyBuffer( mIndicesBuffers[inst].second, stagingBuffer, bufferOffset, bufferSize );
+
+	vkDestroyBuffer( inst->device(), stagingBuffer, nullptr );
+	vkFreeMemory( inst->device(), stagingBufferMemory, nullptr );
+}
+
+
+void VulkanObject::ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count )
+{
 }
 
 
 void VulkanObject::UploadMatrix( Instance* instance )
 {
+/*
 	if ( mVkRefs.find( instance ) == mVkRefs.end() ) {
 		return;
 	}
@@ -226,6 +208,7 @@ void VulkanObject::UploadMatrix( Instance* instance )
 	} else {
 		gDebug() << "Error : vkMapMemory(matrixMemRef) returned null pointer\n";
 	}
+*/
 }
 
 

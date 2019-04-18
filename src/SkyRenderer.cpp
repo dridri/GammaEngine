@@ -59,13 +59,13 @@ SkyRenderer::SkyRenderer( Instance* instance, float domeRadius )
 
 	MeshBuilder builder( MeshBuilder::Sphere, Vector3f( domeRadius, domeRadius, domeRadius ), 4 );
 	builder.Translate( { 0.0f, 0.0f, -domeRadius + domeRadius / 18.0f } );
-	builder.RemoveFaces( (MeshBuilder::MeshBuilderRemoveCb)&SkyRenderer::BuilderRemoveCB );
+// 	builder.RemoveFaces( (MeshBuilder::MeshBuilderRemoveCb)&SkyRenderer::BuilderRemoveCB ); // TODO : use std::function
 	builder.Translate( { 0.0f, 0.0f, domeRadius - domeRadius / 18.0f } );
 	builder.Tesselate( MeshBuilder::Normalize );
 	builder.Tesselate( MeshBuilder::Normalize );
 	builder.Tesselate( MeshBuilder::Normalize );
 	builder.Translate( { 0.0f, 0.0f, -domeRadius + domeRadius / 18.0f } );
-	builder.SinglePassFaces( (MeshBuilder::MeshBuilderPassCb)&SkyRenderer::BuilderModCB );
+// 	builder.SinglePassFaces( (MeshBuilder::MeshBuilderPassCb)&SkyRenderer::BuilderModCB ); // TODO : use std::function
 
 	Vertex* verts = nullptr;
 	uint32_t nVerts = 0;

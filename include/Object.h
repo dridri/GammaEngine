@@ -32,6 +32,7 @@
 namespace GE {
 
 class Instance;
+class Renderer;
 class ObjectLoader;
 class File;
 class Image;
@@ -39,14 +40,14 @@ class Image;
 class Object : public MetaObject
 {
 public:
-	Object( Vertex* verts = nullptr, uint32_t nVerts = 0, uint32_t* indices = nullptr, uint32_t nIndices = 0 );
+	Object( VertexBase* verts = nullptr, uint32_t nVerts = 0, uint32_t* indices = nullptr, uint32_t nIndices = 0 );
 	Object( const std::string filename, bool static_ = false, Instance* instance = nullptr );
 	virtual ~Object();
 
 	const std::string& name() const;
 	uint32_t verticesCount() const;
 	uint32_t indicesCount() const;
-	Vertex* vertices() const;
+	VertexBase* vertices() const;
 	uint32_t* indices() const;
 	Matrix* matrix( int instance = 0 ) const;
 	Vector3f position( int instance = 0 ) const;
@@ -54,9 +55,11 @@ public:
 
 	void setName( const std::string& name );
 	void CreateInstances( int count );
+	void RemoveInstance( uint32_t idx );
 
 	virtual void setTexture( Instance* instance, int unit, Image* texture ) = 0;
-	virtual void UpdateVertices( Instance* instance, Vertex* verts, uint32_t offset, uint32_t count ) = 0;
+	virtual void ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count ) = 0;
+	virtual void UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count ) = 0;
 	virtual void UploadMatrix( Instance* instance ) = 0;
 
 	Object* Copy( bool copy_data = false );
@@ -70,7 +73,7 @@ protected:
 	static ObjectLoader* GetLoader( const std::string filename, File* file );
 	Instance* mInstance;
 	std::string mName;
-	Vertex* mVertices;
+	VertexBase* mVertices;
 	uint32_t mVerticesCount;
 	uint32_t* mIndices;
 	uint32_t mIndicesCount;
@@ -101,7 +104,8 @@ public:
 	virtual std::list< Object* > LoadObjects( Instance* instance, File* file, bool static_ = false ) = 0;
 
 	virtual void setTexture( Instance* instance, int unit, Image* texture ){}
-	virtual void UpdateVertices( Instance* instance, Vertex* verts, uint32_t offset, uint32_t count ){}
+	virtual void ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count ){};
+	virtual void UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count ){}
 	virtual void UploadMatrix( Instance* instance ){}
 };
 

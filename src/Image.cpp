@@ -122,8 +122,12 @@ void Image::Load( File* file, const std::string& extension, Instance* instance )
 	ImageLoader* loader = nullptr;
 
 	if ( ImageLoaderFirstCall ) {
+#ifdef GE_PNG
 		AddImageLoader( new ImageLoaderPng() );
+#endif
+#ifdef GE_JPEG
 		AddImageLoader( new ImageLoaderJpg() );
+#endif
 		ImageLoaderFirstCall = false;
 	}
 

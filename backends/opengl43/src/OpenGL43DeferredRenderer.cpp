@@ -62,6 +62,34 @@ OpenGL43DeferredRenderer::~OpenGL43DeferredRenderer()
 }
 
 
+int OpenGL43DeferredRenderer::LoadVertexShader( const void* data, size_t size )
+{
+	m2DReady = false;
+	return OpenGL43Renderer::LoadVertexShader( data, size );
+}
+
+
+int OpenGL43DeferredRenderer::LoadVertexShader( const std::string& file )
+{
+	m2DReady = false;
+	return OpenGL43Renderer::LoadVertexShader( file );
+}
+
+
+int OpenGL43DeferredRenderer::LoadFragmentShader( const void* data, size_t size )
+{
+	m2DReady = false;
+	return OpenGL43Renderer::LoadFragmentShader( data, size );
+}
+
+
+int OpenGL43DeferredRenderer::LoadFragmentShader( const std::string& file )
+{
+	m2DReady = false;
+	return OpenGL43Renderer::LoadFragmentShader( file );
+}
+
+
 Matrix* OpenGL43DeferredRenderer::projectionMatrix()
 {
 	return mMatrixProjection;
@@ -92,6 +120,40 @@ void OpenGL43DeferredRenderer::setAmbientColor( const Vector4f& color )
 	glUnmapBuffer( GL_ARRAY_BUFFER );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 	mRenderMutex.unlock();
+}
+
+
+void OpenGL43DeferredRenderer::setExtraBuffersCount( uint32_t count )
+{
+	glBindFramebuffer( GL_FRAMEBUFFER, mFBO );
+
+	if ( count > mTextureExtra.size() ) {
+		uint32_t sz = mTextureExtra.size();
+		mTextureExtra.resize( count );
+		for ( uint32_t i = 0; i < count; i++ ) {
+			uint32_t id = -1;
+			glGenTextures( 1, &id );
+			glBindTexture( GL_TEXTURE_2D, id );
+			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB32F, mWidth, mHeight, 0, GL_RGB, GL_FLOAT, NULL );
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+			glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+			glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4_EXT + i, GL_TEXTURE_2D, id, 0 );
+			mTextureExtra[i] = id;
+		}
+	} else {
+		// TODO
+	}
+
+	GLenum buffers[16] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT };
+	for ( uint32_t i = 0; i < mTextureExtra.size(); i++ ) {
+		buffers[4+i] = GL_COLOR_ATTACHMENT4_EXT + i;
+	}
+	glDrawBuffers( 4 + mTextureExtra.size(), buffers );
+
+	glBindTexture( GL_TEXTURE_2D, 0 );
+	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 }
 
 
@@ -165,9 +227,22 @@ void OpenGL43DeferredRenderer::Compute()
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
 	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_2D, mTexturePositions, 0 );
 
-	glBindFramebuffer( GL_FRAMEBUFFER, mFBO );
-	GLenum buffers[] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT };
-	glDrawBuffers( 4, buffers );
+	for ( uint32_t i = 0; i < mTextureExtra.size(); i++ ) {
+		glGenTextures( 1, &mTextureExtra[i] );
+		glBindTexture( GL_TEXTURE_2D, mTextureExtra[i] );
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB32F, mWidth, mHeight, 0, GL_RGB, GL_FLOAT, NULL );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4_EXT + i, GL_TEXTURE_2D, mTextureExtra[i], 0 );
+	}
+
+	GLenum buffers[16] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT };
+	for ( uint32_t i = 0; i < mTextureExtra.size(); i++ ) {
+		buffers[4+i] = GL_COLOR_ATTACHMENT4_EXT + i;
+	}
+	glDrawBuffers( 4 + mTextureExtra.size(), buffers );
 
 	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 /*
@@ -186,13 +261,13 @@ float LightRadius( const Light* light )
 {
 	float a = 1.0f;
 	float b = 0.0f;
-	float c = 0.05f;
+	float c = light->attenuation();
 
 	float delta = -4.0f * a * c;
 	float x = std::sqrt( std::abs( delta ) ) / ( 2.0f * a );
 	x += 1.0f / c;
 
-	return x * 0.65f;
+	return x * 1.25f;
 }
 
 
@@ -200,9 +275,9 @@ void OpenGL43DeferredRenderer::ComputeCommandList()
 {
 	std::vector< Vertex > vertices;
 	std::vector< uint32_t > indices;
-	uint32_t nFlatLights = 0;
-	uint32_t nSphereLights = 0;
-	uint32_t nConeLights = 0;
+	nFlatLights = 0;
+	nSphereLights = 0;
+	nConeLights = 0;
 	uint32_t lightsDataCount = 0;
 	mLightsDataIndices.clear();
 
@@ -313,6 +388,8 @@ void OpenGL43DeferredRenderer::ComputeCommandList()
 	quad[0].color[3] = quad[1].color[3] = quad[2].color[3] = quad[3].color[3] = 1.0f;
 
 	gDebug() << "nFlatLights : " << nFlatLights << "\n";
+	gDebug() << "nSphereLights : " << nSphereLights << "\n";
+	gDebug() << "nConeLights : " << nConeLights << "\n";
 
 	DrawElementsIndirectCommand direct_commands[] = {
 		{
@@ -425,6 +502,9 @@ void OpenGL43DeferredRenderer::Bind()
 		glDeleteTextures( 1, &mTextureDepth );
 		glDeleteTextures( 1, &mTextureNormals );
 		glDeleteTextures( 1, &mTexturePositions );
+		for ( uint32_t id : mTextureExtra ) {
+			glDeleteTextures( 1, &id );
+		}
 		Compute();
 
 		Vertex vertices[4];
@@ -456,6 +536,10 @@ void OpenGL43DeferredRenderer::Bind()
 
 		glBindBuffer( GL_ARRAY_BUFFER, mVBO );
 		glBufferSubData( GL_ARRAY_BUFFER, 0, 4 * sizeof(Vertex), vertices );
+	}
+
+	if ( not m2DReady ) {
+		Compute();
 	}
 
 	glBindFramebuffer( GL_FRAMEBUFFER, mFBO );
@@ -507,6 +591,13 @@ void OpenGL43DeferredRenderer::Render()
 	glBindTexture( GL_TEXTURE_2D, mTexturePositions );
 	glUniform1i( glGetUniformLocation( mShader, "ge_Texture3" ), 3 );
 
+	for ( uint32_t i = 0; i < mTextureExtra.size(); i++ ) {
+		glActiveTexture( GL_TEXTURE4 + i );
+		glEnable( GL_TEXTURE_2D );
+		glBindTexture( GL_TEXTURE_2D, mTextureExtra[i] );
+		glUniform1i( glGetUniformLocation( mShader, ( std::string("ge_Texture") + std::to_string(4+i) ).c_str() ), 4 + i );
+	}
+
 	glBindBufferBase( GL_UNIFORM_BUFFER, binding_proj, mMatrixProjectionID );
 	glBindBufferBase( GL_UNIFORM_BUFFER, binding_view, mMatrixViewID );
 
@@ -520,6 +611,7 @@ void OpenGL43DeferredRenderer::Render()
 	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixProjection->data() );
 
 	glEnable( GL_BLEND );
+	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 
 	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, mCommandBuffer );
 	mRenderMutex.lock();
@@ -529,26 +621,28 @@ void OpenGL43DeferredRenderer::Render()
 	glEnable( GL_DEPTH_TEST );
 	glDepthFunc( GL_LEQUAL );
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE );
-	glMultiDrawElementsIndirect( GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 1, 0 );
-	glDepthFunc( GL_LESS );
+	if ( nFlatLights > 0 ) {
+		glMultiDrawElementsIndirect( GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 1, 0 );
+	}
 	mRenderMutex.unlock();
 
-// 	mMatrixProjection->Identity();
-// 	mMatrixProjection->Perspective( 60.0f, (float)mWidth / (float)mHeight, 0.01f, 1000.0f );
 	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixProjectionID );
 	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixProjection->data() );
 
-// 	glDisable( GL_DEPTH_TEST );
-	glBlendFunc( GL_SRC_ALPHA, GL_ONE );
-	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, mCommandBuffer );
-	mRenderMutex.lock();
-	glBindVertexArray( mVAOs[mLightsDataIDi] );
-// 	glMultiDrawElementsIndirect( GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 2, 0 );
-	glMultiDrawElementsIndirect( GL_TRIANGLES, GL_UNSIGNED_INT, (void*)sizeof(DrawElementsIndirectCommand), 2, 0 );
-	mRenderMutex.unlock();
-	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, 0 );
-	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-// 	glEnable( GL_DEPTH_TEST );
+	if ( nConeLights > 0 or nSphereLights > 0 ) {
+	// 	glDisable( GL_DEPTH_TEST );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE );
+		glBindBuffer( GL_DRAW_INDIRECT_BUFFER, mCommandBuffer );
+		mRenderMutex.lock();
+		glBindVertexArray( mVAOs[mLightsDataIDi] );
+		glMultiDrawElementsIndirect( GL_TRIANGLES, GL_UNSIGNED_INT, (void*)sizeof(DrawElementsIndirectCommand), 2, 0 );
+		mRenderMutex.unlock();
+		glBindBuffer( GL_DRAW_INDIRECT_BUFFER, 0 );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+	// 	glEnable( GL_DEPTH_TEST );
+	}
+
+	glDepthFunc( GL_LESS );
 
 	glBindVertexArray( 0 );
 	glUseProgram( 0 );

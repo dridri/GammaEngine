@@ -23,17 +23,9 @@
 #include "Font.h"
 
 #include <sys/types.h>
-//#include <freetype2/ft2build.h>
-//#include <freetype2/freetype.h>
-//#include <freetype2/ftglyph.h>
 #include <ft2build.h>
-#ifdef GE_ANDROID
 #include <freetype/freetype.h>
 #include <freetype/ftglyph.h>
-#else
-#include <freetype.h>
-#include <ftglyph.h>
-#endif
 
 namespace GE {
 

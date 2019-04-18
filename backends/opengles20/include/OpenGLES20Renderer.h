@@ -61,9 +61,11 @@ public:
 	virtual int LoadFragmentShader( const std::string& file );
 	virtual int LoadFragmentShader( const void* data, size_t size );
 
-	virtual void setRenderMode( int mode );
+	virtual void setVertexDefinition( const VertexDefinition& vertexDefinition );
+	virtual void setRenderMode( const RenderMode& mode );
 	virtual void setDepthTestEnabled( bool en );
 	virtual void setBlendingEnabled( bool en );
+	virtual void setBlendingMode( BlendingMode source, BlendingMode dest );
 
 	virtual void AddObject( Object* obj );
 	virtual void AddLight( Light* light );
@@ -82,9 +84,13 @@ public:
 	virtual void uniformUpload( const uintptr_t id, const Vector4f& v );
 	virtual void uniformUpload( const uintptr_t id, const Matrix& v );
 
+	const std::map< Object*, uint32_t >& objectsVerticesStart() const {return mObjectsVerticesStart; }
+	void UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count );
+
 protected:
 	uint8_t* loadShader( const std::string& filename, size_t* sz = 0 );
 	void createPipeline();
+	void VertexPoolAppend( VertexBase** pVertices, uint32_t& pVerticesPoolSize, uint32_t& pVerticesCount, VertexBase* append, uint32_t count );
 
 	bool mReady;
 	Instance* mInstance;
@@ -95,10 +101,13 @@ protected:
 	uint32_t mMatrixObjectsSize;
 	std::vector< Object* > mObjects;
 	std::vector< Light* > mLights;
+	std::map< Object*, uint32_t > mObjectsVerticesStart;
 
 	int mRenderMode;
 	bool mDepthTestEnabled;
 	bool mBlendingEnabled;
+	int32_t mBlendingSrc;
+	int32_t mBlendingDst;
 
 	uint32_t mShader;
 	uint32_t mVertexShader;
@@ -115,6 +124,7 @@ protected:
 	int32_t mMatrixViewID;
 	int32_t mMatrixObjectID;
 	int32_t mFloatTimeID;
+	int32_t mIntInstanceID;
 
 	static bool s2DActive;
 };

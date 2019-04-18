@@ -46,6 +46,7 @@ FramebufferWindow::FramebufferWindow( Instance* instance, const std::string& tit
 	, mSystemFramebuffer( nullptr )
 	, mReversed( false )
 	, mFramebufferAllocated( false )
+	, mCurrentBuffer( 0 )
 {
 	fDebug( instance, title, width, height, _flags );
 	Window::Flags flags = static_cast<Window::Flags>( _flags );
@@ -95,10 +96,12 @@ int FramebufferWindow::OpenSystemFramebuffer( const std::string& devfile, bool r
 			goto try_raw;
 		}
 
+		vinfo.xres_virtual = vinfo.xres;
+
 		printf( "Second display is %d x %d %dbps\n", vinfo.xres, vinfo.yres, vinfo.bits_per_pixel );
 
-// 		fbp = (void*)mmap( 0, finfo.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0 );
-// 		check_fbp = true;
+		fbp = (void*)mmap( 0, finfo.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0 );
+		check_fbp = true;
 
 		mWidth = vinfo.xres;
 		mHeight = vinfo.yres;
@@ -110,7 +113,7 @@ try_raw: ;
 	}
 
 	if ( check_fbp and fbp <= 0 ) {
-		gDebug() << "Unable to create mamory mapping\n";
+		gDebug() << "Unable to create memory mapping\n";
 		close( fbfd );
 		return -1;
 	}
@@ -131,7 +134,14 @@ void FramebufferWindow::MapMemory( void* fb_pointer, int bpp )
 		mFramebufferAllocated = false;
 		mInstance->Free( mFramebuffer );
 	}
-	mFramebuffer = (uint32_t*)mInstance->Malloc( ( bpp / 8 ) * mWidth * mHeight );
+
+	if ( fb_pointer ) {
+		mFramebuffer = (uint32_t*)fb_pointer;
+	} else {
+		mFramebufferAllocated = true;
+		mFramebuffer = (uint32_t*)mInstance->Malloc( ( bpp / 8 ) * mWidth * mHeight );
+	}
+
 	mSystemFramebuffer = (uint32_t*)fb_pointer;
 	mBpp = bpp;
 
@@ -285,7 +295,11 @@ void FramebufferWindow::SwapBuffersBase()
 	}
 
 	if ( mFramebuffer and mSystemFramebuffer ) {
-		memcpy( mSystemFramebuffer, mFramebuffer, mWidth * mHeight * ( mBpp / 8 ) );
+		if ( mFramebufferAllocated ) {
+			memcpy( mSystemFramebuffer, mFramebuffer, mWidth * mHeight * ( mBpp / 8 ) );
+		} else {
+			// Nothing to do, we already directly written to framebuffer
+		}
 	} else if ( mFramebuffer ) {
 		if ( lseek( mSystemFbHandler, 0, SEEK_SET ) < 0 ) {
 			gDebug() << "lseek error (" << strerror(errno) << ")\n";

@@ -32,10 +32,31 @@ class Instance;
 class Object;
 class Light;
 class Camera;
+class VertexDefinition;
 
 class Renderer
 {
 public:
+	typedef enum {
+		Points,
+		Lines,
+		LineStrip,
+		Triangles,
+		TriangleStrip
+	} RenderMode;
+	typedef enum {
+		Zero,
+		One,
+		SrcColor,
+		OneMinusSrcColor,
+		DstColor,
+		OneMinusDstColor,
+		SrcAlpha,
+		OneMinusSrcAlpha,
+		DstAlpha,
+		OneMinusDstAlpha
+	} BlendingMode;
+
 	virtual ~Renderer(){};
 
 	virtual int LoadVertexShader( const std::string& file ) = 0;
@@ -45,9 +66,11 @@ public:
 	virtual int LoadFragmentShader( const std::string& file ) = 0;
 	virtual int LoadFragmentShader( const void* data, size_t size ) = 0;
 
-	virtual void setRenderMode( int mode ) = 0;
+	virtual void setVertexDefinition( const VertexDefinition& vertexDefinition ) = 0;
+	virtual void setRenderMode( const RenderMode& mode ) = 0;
 	virtual void setDepthTestEnabled( bool en ) = 0;
 	virtual void setBlendingEnabled( bool en ) = 0;
+	virtual void setBlendingMode( BlendingMode source, BlendingMode dest ) = 0;
 
 	virtual void AddObject( Object* obj ) = 0;
 	virtual void AddLight( Light* light ) = 0;

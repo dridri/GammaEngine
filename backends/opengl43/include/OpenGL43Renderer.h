@@ -61,9 +61,11 @@ public:
 	virtual int LoadFragmentShader( const std::string& file );
 	virtual int LoadFragmentShader( const void* data, size_t size );
 
-	virtual void setRenderMode( int mode );
+	virtual void setVertexDefinition( const VertexDefinition& vertexDefinition );
+	virtual void setRenderMode( const RenderMode& mode );
 	virtual void setDepthTestEnabled( bool en );
 	virtual void setBlendingEnabled( bool en );
+	virtual void setBlendingMode( BlendingMode source, BlendingMode dest );
 
 	virtual void AddObject( Object* obj );
 	virtual void AddLight( Light* light );
@@ -85,6 +87,7 @@ public:
 protected:
 	uint8_t* loadShader( const std::string& filename, size_t* sz = 0 );
 	void createPipeline();
+	void VertexPoolAppend( VertexBase** pVertices, uint32_t& pVerticesPoolSize, uint32_t& pVerticesCount, VertexBase* append, uint32_t count );
 
 	bool mReady;
 	Instance* mInstance;
@@ -92,8 +95,10 @@ protected:
 	Matrix* mMatrixProjection;
 	Matrix* mMatrixView;
 	float* mMatrixObjects;
+	VertexDefinition mVertexDefinition;
 	std::vector< Object* > mObjects;
 	std::vector< Light* > mLights;
+	std::vector< uint32_t > mTexturesNames;
 	uint32_t mTotalObjectsInstances;
 
 	int mRenderMode;
@@ -114,6 +119,7 @@ protected:
 	uint32_t mMatrixViewID;
 	uint32_t mMatrixObjectID;
 	uint32_t mTextureBaseID;
+	uint32_t mTextureCountID;
 	uint32_t mTexturesID;
 	int32_t mFloatTimeID;
 };

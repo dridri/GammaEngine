@@ -21,7 +21,9 @@
 
 #include "Image.h"
 #include "Font.h"
+#ifdef GE_FREETYPE
 #include "FontLoaderTtf.h"
+#endif
 #include "Instance.h"
 #include "File.h"
 #include "Debug.h"
@@ -100,7 +102,9 @@ void Font::Load( File* file, int size, const std::string& extension, Instance* i
 	FontLoader* loader = nullptr;
 
 	if ( FontLoaderFirstCall ) {
+#ifdef GE_FREETYPE
 		AddFontLoader( new FontLoaderTtf() );
+#endif
 		FontLoaderFirstCall = false;
 	}
 

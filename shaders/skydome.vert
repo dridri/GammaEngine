@@ -2,8 +2,8 @@
 
 #version 430 core
 #extension GL_ARB_explicit_uniform_location : require
-#extension GL_ARB_shader_draw_parameters : require
-#extension GL_ARB_bindless_texture : require
+// #extension GL_ARB_shader_draw_parameters : require
+// #extension GL_ARB_bindless_texture : require
 
 #define geTexture2D(x) sampler2D( ge_Textures[ ge_TextureBase + x ].xy )
 #define geTexture3D(x) sampler3D( ge_Textures[ ge_TextureBase + x ].xy )
@@ -24,12 +24,12 @@ layout (binding=1, std140) uniform ge_Matrices_1
 {
 	mat4 ge_ViewMatrix;
 };
-
+/*
 layout (binding=2, std140) uniform ge_Textures_0
 {
 	uvec4 ge_Textures[256];
 };
-
+*/
 
 uniform vec3 v3CameraPos = vec3(0.0);
 uniform vec3 v3SunPos = vec3(10000000.0, 5000000.0, 10000000.0);
@@ -50,7 +50,7 @@ out vec3 vpos;
 out vec3 sumR;
 out vec3 sumM;
 
-out sampler2D ge_RandTexture;
+// out sampler2D ge_RandTexture;
 out vec3 v3SunColor;
 
 void CalcSun( vec3 SunPosition, vec3 curr, float hr, float hm, float opticalDepthR, float opticalDepthM );
@@ -82,7 +82,7 @@ void main()
 	sumR = vec3(0.0, 0.0, 0.0);
 	sumM = vec3(0.0);
 
-	ge_RandTexture = geTexture2D( 0 );
+// 	ge_RandTexture = geTexture2D( 0 );
 
 	vec3 start = v3CameraPos;
 	vpos = ge_VertexPosition.xyz;

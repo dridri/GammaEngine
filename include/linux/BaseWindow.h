@@ -61,6 +61,8 @@ public:
 	void SwapBuffersBase();
 	float fps() const;
 
+	Display* display() const { return mDisplay; }
+
 protected:
 	void pEventThread();
 

@@ -33,12 +33,13 @@ using namespace GE;
 class OpenGLES20Object : public Object
 {
 public:
-	OpenGLES20Object( Vertex* verts = nullptr, uint32_t nVerts = 0, uint32_t* indices = nullptr, uint32_t nIndices = 0 );
+	OpenGLES20Object( VertexBase* verts = nullptr, uint32_t nVerts = 0, uint32_t* indices = nullptr, uint32_t nIndices = 0 );
 	OpenGLES20Object( const std::string filename, Instance* instance = nullptr );
 	~OpenGLES20Object();
 
 	virtual void setTexture( Instance* instance, int unit, Image* texture );
-	virtual void UpdateVertices( Instance* instance, Vertex* verts, uint32_t offset, uint32_t count );
+	virtual void ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count );
+	virtual void UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count );
 	virtual void UploadMatrix( Instance* instance );
 
 	const std::vector< std::pair< Image*, uint32_t > >* textures( Instance* instance );

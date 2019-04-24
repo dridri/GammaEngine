@@ -333,8 +333,8 @@ std::size_t MeshBuilder::VertexHasher::operator()( const Vertex& k ) const
 
 	std::size_t a = ((hash<float>()(k.x) ^ (hash<float>()(k.y) << 1)) >> 1) ^ ((hash<float>()(k.z) ^ (hash<int>()(k.weight) << 1)) >> 1);
 	std::size_t b = ((hash<float>()(k.color[0]) ^ (hash<float>()(k.color[1]) << 1)) >> 1) ^ ((hash<float>()(k.color[2]) ^ (hash<int>()(k.color[3]) << 1)) >> 1);
-	std::size_t c = ((hash<float>()(k.u) ^ (hash<float>()(k.v) << 1)) >> 1) ^ ((hash<float>()(k.w) ^ (hash<int>()(k._align1) << 1)) >> 1);
-	std::size_t d = ((hash<float>()(k.nx) ^ (hash<float>()(k.ny) << 1)) >> 1) ^ ((hash<float>()(k.nz) ^ (hash<int>()(k._align2) << 1)) >> 1);
+	std::size_t c = ((hash<float>()(k.u) ^ (hash<float>()(k.v) << 1)) >> 1) ^ ((hash<float>()(k.w) ^ (hash<int>()(k.texid) << 1)) >> 1);
+	std::size_t d = ((hash<float>()(k.nx) ^ (hash<float>()(k.ny) << 1)) >> 1) ^ ((hash<float>()(k.nz) ^ (hash<int>()(k._align1) << 1)) >> 1);
 	return a ^ ((b << 1) >> 1) ^ ((c << 1) >> 2) ^ (d << 1);
 }
 
@@ -347,8 +347,8 @@ std::size_t MeshBuilder::VertexHasher::operator()( const Vertex* k ) const
 
 	std::size_t a = ((hash<float>()(k->x) ^ (hash<float>()(k->y) << 1)) >> 1) ^ ((hash<float>()(k->z) ^ (hash<int>()(k->weight) << 1)) >> 1);
 	std::size_t b = ((hash<float>()(k->color[0]) ^ (hash<float>()(k->color[1]) << 1)) >> 1) ^ ((hash<float>()(k->color[2]) ^ (hash<int>()(k->color[3]) << 1)) >> 1);
-	std::size_t c = ((hash<float>()(k->u) ^ (hash<float>()(k->v) << 1)) >> 1) ^ ((hash<float>()(k->w) ^ (hash<int>()(k->_align1) << 1)) >> 1);
-	std::size_t d = ((hash<float>()(k->nx) ^ (hash<float>()(k->ny) << 1)) >> 1) ^ ((hash<float>()(k->nz) ^ (hash<int>()(k->_align2) << 1)) >> 1);
+	std::size_t c = ((hash<float>()(k->u) ^ (hash<float>()(k->v) << 1)) >> 1) ^ ((hash<float>()(k->w) ^ (hash<int>()(k->texid) << 1)) >> 1);
+	std::size_t d = ((hash<float>()(k->nx) ^ (hash<float>()(k->ny) << 1)) >> 1) ^ ((hash<float>()(k->nz) ^ (hash<int>()(k->_align1) << 1)) >> 1);
 	return a ^ ((b << 1) >> 1) ^ ((c << 1) >> 2) ^ (d << 1);
 }
 

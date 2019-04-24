@@ -35,12 +35,19 @@ class File;
 class Image : public MetaObject
 {
 public:
+	typedef enum {
+		ImageColor,
+		ImageDepth,
+		ImageNorm
+	} Type;
+
 	Image();
 	Image( File* file, const std::string& extension = "", Instance* instance = nullptr );
 	Image( const std::string& filename, Instance* instance = nullptr );
 	Image( uint32_t width, uint32_t height, uint32_t backcolor = 0x00000000, Instance* instance = nullptr );
 	~Image();
 
+	Type type() const;
 	uint32_t width() const;
 	uint32_t height() const;
 	uint32_t* data() const;
@@ -49,6 +56,7 @@ public:
 
 	void UpdateData( Instance* instance = nullptr );
 
+	void setType( const Type& type );
 	void setColor( uint32_t c );
 	void Resize( uint32_t width, uint32_t height );
 	void Release();
@@ -58,6 +66,7 @@ public:
 protected:
 	void Load( File* file, const std::string& extension, Instance* instance );
 	Instance* mAllocInstance;
+	Type mType;
 	uint32_t mWidth;
 	uint32_t mHeight;
 	uint32_t* mData;

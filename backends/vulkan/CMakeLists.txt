@@ -25,9 +25,12 @@ include_directories(../../libvulkangl/include)
 add_library(backend_vulkan
 	SHARED
 	src/VulkanObject.cpp
+	src/VulkanDeferredRenderer.cpp
 	src/VulkanRenderer.cpp
+	src/VulkanRenderer2D.cpp
 	src/VulkanWindow.cpp
 	src/VulkanFramebuffer.cpp
+	src/VulkanRenderPass.cpp
 	src/VulkanInstance.cpp
 )
 

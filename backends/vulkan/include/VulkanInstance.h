@@ -45,9 +45,10 @@ namespace GE {
 	class Object;
 	class Image;
 	class VulkanFramebuffer;
+	class VulkanRenderPass;
 }
 using namespace GE;
-	void AffectVRAM( int64_t sz );
+
 
 class VulkanInstance : public Instance
 {
@@ -70,21 +71,23 @@ public:
 	VkCommandPool commandPool() const { return mCommandPool; }
 	uint32_t graphicsQueueFamilyIndex() const { return mGraphicsQueueFamilyIndex; }
 	uint32_t presentationQueueFamilyIndex() const { return mPresentationQueueFamilyIndex; }
-	VkRenderPass renderPass() const { return mRenderPass; }
-	VkRenderPass clearRenderPass() const { return mClearRenderPass; }
+	VulkanRenderPass* renderPass() const { return mRenderPass; }
 
 	std::map< Thread*, VulkanFramebuffer* >& boundFramebuffers() { return mBoundFramebuffers; }
 	VulkanFramebuffer* boundFramebuffer( Thread* thread ) { return mBoundFramebuffers[thread]; }
 
 	uint32_t FindMemoryType( uint32_t typeFilter, VkMemoryPropertyFlags properties );
 	VkResult CreateBuffer( VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory );
+	VkResult CreateImage( uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage* image, VkDeviceMemory* imageMemory );
 	VkResult CopyBuffer( VkBuffer dstBuffer, VkBuffer srcBuffer, VkDeviceSize offset, VkDeviceSize size );
+	VkResult CopyBufferToImage( VkImage image, VkBuffer buffer, uint32_t width, uint32_t height );
 	void TransitionImageLayout( VkImage image, VkImageAspectFlags aspect, VkImageLayout oldLayout, VkImageLayout newLayout );
 // 	VK_MEMORY_REF AllocateObject( VK_OBJECT object );
 // 	VK_MEMORY_REF AllocateMappableBuffer( size_t size );
 // 	static void UpdateDescriptorSet( VK_DESCRIPTOR_SET descriptorSet, VK_MEMORY_VIEW_ATTACH_INFO* memoryViewAttachInfo );
 
 // 	void QueueSubmit( VK_CMD_BUFFER buf, VK_MEMORY_REF* refs, int nRefs );
+	void AffectVRAM( int64_t sz );
 
 private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData );
@@ -109,9 +112,28 @@ private:
 	VkCommandPool mCommandPool;
 	VkCommandBuffer mCommandBuffer;
 
-	VkRenderPass mRenderPass;
-	VkRenderPass mClearRenderPass;
+	VulkanRenderPass* mRenderPass;
+// 	VkRenderPass mClearRenderPass;
 	std::map< Thread*, VulkanFramebuffer* > mBoundFramebuffers;
 };
+
+
+class VulkanTexture {
+public:
+	VulkanTexture( VulkanInstance* instance, Image* image = nullptr );
+	Image* geImage() { return mGeImage; }
+	VkImage& image() { return mImage; }
+	VkDeviceMemory& imageMemory() { return mImageMemory; }
+	VkImageView& imageView() { return mImageView; }
+	VkSampler& sampler() { return mSampler; }
+
+protected:
+	Image* mGeImage;
+	VkImage mImage;
+	VkDeviceMemory mImageMemory;
+	VkImageView mImageView;
+	VkSampler mSampler;
+};
+
 
 #endif // VULKANINSTANCE_H

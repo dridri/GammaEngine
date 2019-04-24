@@ -77,9 +77,31 @@ void TEST()
 {
 	Instance* instance = Instance::Create( "test::vulkan", 42, true, "vulkan" );
 	Window* window = instance->CreateWindow( "test::vulkan", 1280, 720, Window::Resizable );
+	Font* font = new Font( "scene/Arial Unicode MS.ttf" );
 
+	Renderer2D* renderer2d = instance->CreateRenderer2D( window->width(), window->height() );
+	renderer2d->AssociateSize( window );
+	renderer2d->LoadVertexShader( "shaders_vulkan/2d.vert.spv" );
+	renderer2d->LoadFragmentShader( "shaders_vulkan/2d.frag.spv" );
+/*
+	Light* sun_light = new Light( Vector4f( 1.0, 1.0, 1.0, 1.0 ), Vector3f( 10000000.0f, 5000000.0f, 10000000.0f ), 0.0f );
+	DeferredRenderer* deferredRenderer = instance->CreateDeferredRenderer( window->width(), window->height() );
+	deferredRenderer->AssociateSize( window );
+	deferredRenderer->setAmbientColor( Vector4f( 0.65f, 0.65f, 0.65f, 1.0f ) ); // day
+	deferredRenderer->AddSunLight( sun_light );
+*/
 	Object* cube = instance->LoadObject( "scene/cube.obj" );
-
+/*
+	const int cubes_side = 64;
+	cube->CreateInstances( cubes_side * cubes_side * cubes_side );
+	for ( int k = 0; k < cubes_side; k++ ) {
+		for ( int j = 0; j < cubes_side; j++ ) {
+			for ( int i = 0; i < cubes_side; i++ ) {
+				cube->matrix( k*cubes_side*cubes_side + j*cubes_side + i )->Translate( i, j, k );
+			}
+		}
+	}
+*/
 	Renderer* render = instance->CreateRenderer();
 	render->LoadVertexShader( "shaders_vulkan/basic.vert.spv" );
 	render->LoadFragmentShader( "shaders_vulkan/basic.frag.spv" );
@@ -89,13 +111,16 @@ void TEST()
 	render->Compute();
 // 	exit(0);
 
-	std::list< Object* > scene_objects = Object::LoadObjects( "scene/street.obj", true, instance );
+
+
+
+	std::list< Object* > scene_objects = Object::LoadObjects( "scene/sponza2.obj", true, instance );
 	std::vector<Object*> objects{ std::begin(scene_objects), std::end(scene_objects) };
 	Renderer* render2 = instance->CreateRenderer();
 	render2->LoadVertexShader( "shaders_vulkan/basic.vert.spv" );
 	render2->LoadFragmentShader( "shaders_vulkan/basic.frag.spv" );
-// 	render->LoadVertexShader( "shaders/basic.vert" );
-// 	render->LoadFragmentShader( "shaders/basic.frag" );
+// 	render2->LoadVertexShader( "shaders/basic.vert" );
+// 	render2->LoadFragmentShader( "shaders/basic.frag" );
 	for ( auto obj : objects ) {
 		render2->AddObject( obj );
 	}
@@ -107,6 +132,11 @@ void TEST()
 	camera->setInertia( 0.999f );
 	camera->LookAt( { -6.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } );
 
+	float fps = 0.0f;
+	float fps_min = 1.0e34f;
+	float fps_max = 0.0f;
+	float time = Time::GetSeconds();
+	uint32_t img = 0;
 	while ( 1 ) {
 		input->Update();
 		if ( input->pressed( 'E' ) ) {
@@ -135,13 +165,32 @@ void TEST()
 		window->BindTarget();
 		window->Clear( 0xFF202020 );
 
+		cube->matrix()->RotateZ( 0.01f );
+
+// 		deferredRenderer->Bind();
 		render->Look( camera );
 		render->Draw();
 		render2->Look( camera );
 		render2->Draw();
+// 		deferredRenderer->Look( camera );
+// 		deferredRenderer->Render();
+
+		renderer2d->DrawText( 0, font->size() * 0, font, 0xFFFFFFFF, " FPS : " + std::to_string( (int)fps ) );
+		renderer2d->DrawText( 0, font->size() * 1, font, 0xFFFFFFFF, " RAM : " + std::to_string( instance->cpuRamCounter() / 1024 ) );
+		renderer2d->DrawText( 0, font->size() * 2, font, 0xFFFFFFFF, "VRAM : " + std::to_string( instance->gpuRamCounter() / 1024 ) );
 
 		window->SwapBuffers();
 		Time::GlobalSync();
+
+		img++;
+		if ( Time::GetSeconds() - time >= 1.0f ) {
+			fps = img * 1.0f / ( Time::GetSeconds() - time );
+			fps_min = std::min( fps_min, fps );
+			fps_max = std::max( fps_max, fps );
+			time = Time::GetSeconds();
+			img = 0;
+			printf( "fps : %.2f (%.2f - %.2f)\n", fps, fps_min, fps_max );
+		}
 	}
 
 }
@@ -188,7 +237,7 @@ int main( int argc, char** argv )
 
 	Object* cube = instance->LoadObject( "scene/cube.obj" );
 
-	const int cubes_side = 8;
+	const int cubes_side = 4;
 	Object* cubes[cubes_side*cubes_side*cubes_side];
 	for ( int i = 0; i < cubes_side*cubes_side*cubes_side; i++ ) {
 		cubes[i] = cube->Copy();

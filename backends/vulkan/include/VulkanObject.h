@@ -55,12 +55,11 @@ public:
 
 	void UpdateIndices( Instance* instance, uint32_t* indices, uint32_t offset, uint32_t count );
 // 	VkCommandBuffer& commandBuffer( VulkanInstance* instance );
-	VkBuffer& vertexBuffer( VulkanInstance* instance );
-	VkBuffer& indicesBuffer( VulkanInstance* instance );
+// 	VkBuffer& vertexBuffer( VulkanInstance* instance );
+// 	VkBuffer& indicesBuffer( VulkanInstance* instance );
+	VkBuffer& matricesBuffer( VulkanInstance* instance );
 
-// 	VK_DESCRIPTOR_SET descriptorSet( Instance* instance );
-// 	VK_MEMORY_REF verticesRef( Instance* instance );
-// 	VK_MEMORY_REF indicesRef( Instance* instance );
+	const std::vector< VulkanTexture* >* textures( VulkanInstance* instance );
 
 protected:
 	// descriptorSet, descriptorMemRef, vertexDataMemRef, indexMemRef, matrixMemRef associated to Instance*
@@ -69,8 +68,11 @@ protected:
 	void AllocateGpu( VulkanInstance* instance );
 
 // 	std::map< VulkanInstance*, VkCommandBuffer > mCommandBuffers;
-	std::map< VulkanInstance*, std::pair< VkDeviceMemory, VkBuffer > > mVertexBuffers;
-	std::map< VulkanInstance*, std::pair< VkDeviceMemory, VkBuffer > > mIndicesBuffers;
+// 	std::map< VulkanInstance*, std::pair< VkDeviceMemory, VkBuffer > > mVertexBuffers;
+// 	std::map< VulkanInstance*, std::pair< VkDeviceMemory, VkBuffer > > mIndicesBuffers;
+	std::map< VulkanInstance*, std::pair< VkDeviceMemory, VkBuffer > > mMatricesBuffers;
+
+	std::map< VulkanInstance*, std::vector< VulkanTexture* > > mTextures;
 };
 
 

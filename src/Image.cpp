@@ -20,6 +20,7 @@
 #include "Image.h"
 #include "ImageLoaderPng.h"
 #include "ImageLoaderJpg.h"
+#include "ImageLoaderTga.h"
 #include "Instance.h"
 #include "File.h"
 #include "Debug.h"
@@ -46,6 +47,7 @@ static uint32_t geGetNextPower2( uint32_t width )
 */
 Image::Image()
 	: mAllocInstance( nullptr )
+	, mType( ImageColor )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
@@ -56,6 +58,7 @@ Image::Image()
 
 Image::Image( File* file, const std::string& extension, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
+	, mType( ImageColor )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
@@ -68,6 +71,7 @@ Image::Image( File* file, const std::string& extension, Instance* instance )
 
 Image::Image( const std::string& filename, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
+	, mType( ImageColor )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
@@ -85,6 +89,7 @@ Image::Image( const std::string& filename, Instance* instance )
 
 Image::Image( uint32_t width, uint32_t height, uint32_t backcolor, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
+	, mType( ImageColor )
 	, mWidth( width )
 	, mHeight( height )
 	, mData( nullptr )
@@ -127,6 +132,9 @@ void Image::Load( File* file, const std::string& extension, Instance* instance )
 #endif
 #ifdef GE_JPEG
 		AddImageLoader( new ImageLoaderJpg() );
+#endif
+#ifdef GE_TGA
+		AddImageLoader( new ImageLoaderTga() );
 #endif
 		ImageLoaderFirstCall = false;
 	}
@@ -172,13 +180,22 @@ void Image::Load( File* file, const std::string& extension, Instance* instance )
 		loader->Load( instance, file );
 // 		*this = static_cast< Image >( *loader );
 // 		*this = *((Image*)loader);
+		mType = loader->mType;
 		mWidth = loader->mWidth;
 		mHeight = loader->mHeight;
 		mData = loader->mData;
 // 		delete loader;
 		free( loader );
 // 		gDebug() << "Image loaded, size = " << mWidth << " x " << mHeight << "\n";
+	} else {
+		gDebug() << "WARNING : no ImageLoader found for extension " << extension;
 	}
+}
+
+
+Image::Type Image::type() const
+{
+	return mType;
 }
 
 
@@ -203,6 +220,12 @@ uint32_t* Image::data() const
 uint32_t Image::color() const
 {
 	return mColor;
+}
+
+
+void Image::setType( const Image::Type& type )
+{
+	mType = type;
 }
 
 

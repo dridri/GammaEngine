@@ -29,6 +29,7 @@
 #include "VulkanObject.h"
 #include "File.h"
 #include "Debug.h"
+#include "Image.h"
 
 // #include <algorithm>
 
@@ -107,7 +108,7 @@ VkCommandBuffer& VulkanObject::commandBuffer( VulkanInstance* instance )
 	return mCommandBuffers[instance];
 }
 */
-
+/*
 VkBuffer& VulkanObject::vertexBuffer( VulkanInstance* instance )
 {
 	if ( mVertexBuffers.find( instance ) == mVertexBuffers.end() ) {
@@ -128,25 +129,49 @@ VkBuffer& VulkanObject::indicesBuffer( VulkanInstance* instance )
 	}
 	return mIndicesBuffers[instance].second;
 }
+*/
+VkBuffer& VulkanObject::matricesBuffer( VulkanInstance* instance )
+{
+	if ( mMatricesBuffers.find( instance ) == mMatricesBuffers.end() ) {
+		AllocateGpu( instance );
+	}
+	return mMatricesBuffers[instance].second;
+}
+
+
+const std::vector<VulkanTexture*> * VulkanObject::textures( VulkanInstance* instance )
+{
+	if ( mTextures.find( instance ) != mTextures.end() ) {
+		return &mTextures[instance];
+	}
+	return nullptr;
+}
 
 
 void VulkanObject::AllocateGpu( VulkanInstance* instance )
 {
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
+/*
 	instance->CreateBuffer( mVerticesCount * Vertex::vertexDefinition().size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
 	mVertexBuffers[instance] = std::make_pair( stagingBufferMemory, stagingBuffer );
 	UpdateVertices( instance, mVertices, 0, mVerticesCount );
+
 	if ( mIndicesCount > 0 ) {
 		instance->CreateBuffer( mIndicesCount * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
 		mIndicesBuffers[instance] = std::make_pair( stagingBufferMemory, stagingBuffer );
 		UpdateIndices( instance, mIndices, 0, mIndicesCount );
 	}
+*/
+	instance->CreateBuffer( mMatrices.size() * sizeof(float)*16, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory );
+	mMatricesBuffers[instance] = std::make_pair( stagingBufferMemory, stagingBuffer );
+	UploadMatrix( instance );
 }
 
 
 void VulkanObject::UpdateVertices( Instance* instance, VertexBase* verts, uint32_t offset, uint32_t count )
 {
+/*
 	VulkanInstance* inst = static_cast<VulkanInstance*>(instance);
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -163,11 +188,13 @@ void VulkanObject::UpdateVertices( Instance* instance, VertexBase* verts, uint32
 
 	vkDestroyBuffer( inst->device(), stagingBuffer, nullptr );
 	vkFreeMemory( inst->device(), stagingBufferMemory, nullptr );
+*/
 }
 
 
 void VulkanObject::UpdateIndices( Instance* instance, uint32_t* indices, uint32_t offset, uint32_t count )
 {
+/*
 	VulkanInstance* inst = static_cast<VulkanInstance*>(instance);
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -183,6 +210,7 @@ void VulkanObject::UpdateIndices( Instance* instance, uint32_t* indices, uint32_
 
 	vkDestroyBuffer( inst->device(), stagingBuffer, nullptr );
 	vkFreeMemory( inst->device(), stagingBufferMemory, nullptr );
+*/
 }
 
 
@@ -193,25 +221,42 @@ void VulkanObject::ReuploadVertices( Renderer* renderer, uint32_t offset, uint32
 
 void VulkanObject::UploadMatrix( Instance* instance )
 {
-/*
-	if ( mVkRefs.find( instance ) == mVkRefs.end() ) {
-		return;
-	}
+	VulkanInstance* inst = static_cast<VulkanInstance*>(instance);
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	uint32_t bufferSize = mMatrices.size() * sizeof(float) * 16;
 
-	VK_MEMORY_REF matrixMemRef = std::get<4>( mVkRefs.at( instance ) );
-	void* bufferPointer = nullptr;
+	stagingBufferMemory = mMatricesBuffers[inst].first;
 
-	vkMapMemory( matrixMemRef.mem, 0, &bufferPointer );
-	if ( bufferPointer ) {
-		memcpy( bufferPointer, mMatrix->data(), sizeof( float ) * 16 );
-		vkUnmapMemory( matrixMemRef.mem );
-	} else {
-		gDebug() << "Error : vkMapMemory(matrixMemRef) returned null pointer\n";
+// 	inst->CreateBuffer( bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory );
+	float* data;
+	vkMapMemory( inst->device(), stagingBufferMemory, 0, bufferSize, 0, (void**)&data );
+	for ( Matrix* m : mMatrices ) {
+		memcpy( data, m->data(), sizeof(float) * 16 );
+		data += 16;
 	}
-*/
+	vkUnmapMemory( inst->device(), stagingBufferMemory );
+
+// 	inst->CopyBuffer( mMatricesBuffers[inst].second, stagingBuffer, 0, bufferSize );
+// 	vkDestroyBuffer( inst->device(), stagingBuffer, nullptr );
+// 	vkFreeMemory( inst->device(), stagingBufferMemory, nullptr );
 }
 
 
-void VulkanObject::setTexture( Instance* Instance, int unit, Image* texture )
+void VulkanObject::setTexture( Instance* instance_, int unit, Image* texture )
 {
+	VulkanInstance* instance = static_cast<VulkanInstance*>(instance_);
+
+	std::vector< VulkanTexture* >* textures = nullptr;
+	if ( mTextures.find( instance ) == mTextures.end() ) {
+		std::vector< VulkanTexture* > empty;
+		mTextures.insert( std::make_pair( instance, empty ) );
+	}
+	textures = &mTextures[ instance ];
+
+	if ( (int)textures->size() <= unit ) {
+		textures->resize( unit + 1, nullptr );
+	}
+
+	(*textures)[unit] = reinterpret_cast<VulkanTexture*>( texture->serverReference( instance ) );
 }

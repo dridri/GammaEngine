@@ -81,16 +81,16 @@ public:
 class Vertex : public VertexBase
 {
 public:
-	Vertex( const Vector3f& pos = Vector3f(), const Vector4f& color = Vector4f(1,1,1,1), const Vector3f& normal = Vector3f(), const Vector3f& texcoords = Vector3f() );
+	Vertex( const Vector3f& pos = Vector3f(), const Vector4f& color = Vector4f(1,1,1,1), const Vector3f& normal = Vector3f(), const Vector4f& texcoords = Vector4f() );
 
 	bool operator==( const Vertex& other ) const;
 	static VertexDefinition vertexDefinition();
 
 // Attributes defined as public for fast access
 public:
-	float u, v, w, _align1;
+	float u, v, w, texid;
 	float color[4];
-	float nx, ny, nz, _align2;
+	float nx, ny, nz, _align1;
 	float x, y, z, weight;
 } __attribute__((packed, aligned(16))); // Stay cool with memory
 

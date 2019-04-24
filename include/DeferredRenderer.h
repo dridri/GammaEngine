@@ -22,6 +22,7 @@
 
 #include <vector>
 #include "Vector.h"
+#include "Window.h"
 
 namespace GE {
 
@@ -55,7 +56,7 @@ public:
 	virtual Matrix* projectionMatrix() = 0;
 	virtual void Update( Light* light = nullptr ) = 0;
 
-	virtual void AssociateSize( Window* window ) = 0;
+	virtual void AssociateSize( GE::Window* window ) = 0;
 };
 
 } // namespace GE

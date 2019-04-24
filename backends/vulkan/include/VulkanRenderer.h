@@ -79,11 +79,24 @@ public:
 	virtual void uniformUpload( const uintptr_t id, const Vector4f& v );
 	virtual void uniformUpload( const uintptr_t id, const Matrix& v );
 
+	void PrePopulateCommandBuffer( VkCommandBuffer buffer );
 	void PopulateCommandBuffer( VkCommandBuffer buffer );
 
-private:
+protected:
+	typedef struct {
+		struct {
+			VkDeviceMemory memory;
+			VkBuffer buffer;
+		} host;
+		struct {
+			VkDeviceMemory memory;
+			VkBuffer buffer;
+		} device;
+		size_t size;
+	} MirrorBuffer;
+
 	uint8_t* loadShader( const std::string& filename, size_t* sz );
-	void createPipeline();
+	void createPipeline( uint32_t textures_count = 1, bool basic = false );
 	void VertexPoolAppend( VertexBase** pVertices, uint32_t& pVerticesPoolSize, uint32_t& pVerticesCount, VertexBase* append, uint32_t count );
 
 	bool mReady;
@@ -107,11 +120,24 @@ private:
 	VkPipeline mPipeline;
 
 	VkDescriptorPool mDescriptorPool;
-	std::pair< VkDeviceMemory, VkBuffer > mUniformsBuffer;
-	VkDescriptorSet mUniformsDescriptorSet;
+	MirrorBuffer mUniformsBuffer;
+	VkDescriptorSet mDescriptorSet;
 
 	uint32_t mTotalObjectsInstances;
+	std::pair< VkDeviceMemory, VkBuffer > mVertexBuffer;
+	std::pair< VkDeviceMemory, VkBuffer > mIndicesBuffer;
+	MirrorBuffer mMatricesBuffer;
+	VkCommandBuffer mDataCommandBuffer;
+
+	MirrorBuffer mIndirectBuffer;
+	MirrorBuffer mIndexedIndirectBuffer;
+	MirrorBuffer mTexturesIndicesBuffer;
+
+	VulkanTexture* mEmptyTexture;
+
 	int mRenderMode;
+	bool mDepthTest;
+	bool mBlending;
 };
 
 #endif // VULKANRENDERER_H

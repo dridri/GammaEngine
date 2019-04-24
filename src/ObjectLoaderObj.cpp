@@ -97,6 +97,9 @@ std::list< Object* > ObjectLoaderObj::LoadObjects( Instance* instance, File* fil
 	base_mat.diffuse[0] = base_mat.diffuse[1] = base_mat.diffuse[2] = base_mat.diffuse[3]= 1.0f;
 	Material* mat = &base_mat;
 
+	std::map< Material*, int32_t > currentMaterials; // material, texidx or -1
+	uint32_t curr_tex_id = 0;
+
 	uint32_t iVert = 0;
 	uint32_t iTex = 0;
 	uint32_t iNorm = 0;
@@ -118,6 +121,10 @@ std::list< Object* > ObjectLoaderObj::LoadObjects( Instance* instance, File* fil
 
 	while ( file->ReadLine( line ) )
 	{
+		if ( line[0] == '#' ) {
+			continue;
+		}
+
 		tokenizer.clear();
 		tokenizer.str( line );
 
@@ -154,11 +161,25 @@ std::list< Object* > ObjectLoaderObj::LoadObjects( Instance* instance, File* fil
 				Object* obj = instance->CreateObject( finalVertices, finalVerticesCount, finalIndices, finalIndicesCount );
 				obj->matrix()->Translate( center.x, center.y, center.z );
 				obj->setName( currentName );
+				for ( std::pair< Material*, int32_t > mat : currentMaterials ) {
+					if ( mat.second >= 0 ) {
+						if ( mat.first->map_Kd ) {
+							obj->setTexture( instance, mat.second, mat.first->map_Kd );
+						}
+						if ( mat.first->map_bump ) {
+							obj->setTexture( instance, mat.second + 1, mat.first->map_bump );
+						}
+					}
+				}
+/*
 				if ( mat && mat != &base_mat ) {
 					if ( mat->map_Kd ) obj->setTexture( instance, 0, mat->map_Kd );
 // 					if ( mat->map_bump ) obj->setTexture( instance, 1, mat->map_bump );
 				}
+*/
 				objects.emplace_back( obj );
+				currentMaterials.clear();
+				curr_tex_id = 0;
 			}
 
 			elements.clear();
@@ -174,6 +195,12 @@ std::list< Object* > ObjectLoaderObj::LoadObjects( Instance* instance, File* fil
 				mat = mMaterials[ str ];
 			} else {
 				mat = &base_mat;
+			}
+			if ( currentMaterials.find( mat ) == currentMaterials.end() ) {
+				currentMaterials.emplace( std::make_pair( mat, mat->map_Kd ? curr_tex_id++ : -1 ) );
+				if ( mat->map_bump ) {
+					curr_tex_id++;
+				}
 			}
 		}
 
@@ -242,7 +269,7 @@ std::list< Object* > ObjectLoaderObj::LoadObjects( Instance* instance, File* fil
 					}
 					if ( p == 3 ) {
 						Vector3f ppos;
-						Vector3f ptex;
+						Vector4f ptex;
 						Vector3f pnorm;
 						if ( point_indexes[0] >= 0 ) {
 							ppos = verts[point_indexes[0]];
@@ -252,6 +279,10 @@ std::list< Object* > ObjectLoaderObj::LoadObjects( Instance* instance, File* fil
 						}
 						if ( point_indexes[1] >= 0 ) {
 							ptex = tex[point_indexes[1]];
+						}
+						ptex.w = currentMaterials[mat];
+						if ( ptex.w > 0 ) {
+							gDebug() << ptex.w;
 						}
 						buff[idx] = Vertex( ppos, Vector4f(mat->diffuse), pnorm, ptex );
 						buff[idx].v = -buff[idx].v;
@@ -301,9 +332,10 @@ std::list< Object* > ObjectLoaderObj::LoadObjects( Instance* instance, File* fil
 	Object* obj = instance->CreateObject( finalVertices, finalVerticesCount, finalIndices, finalIndicesCount );
 	obj->matrix()->Translate( center.x, center.y, center.z );
 	obj->setName( currentName );
-	if ( mat && mat != &base_mat ) {
-		if ( mat->map_Kd ) obj->setTexture( instance, 0, mat->map_Kd );
-// 		if ( mat->map_bump ) obj->setTexture( instance, 1, mat->map_bump );
+	for ( std::pair< Material*, int32_t > mat : currentMaterials ) {
+		if ( mat.second >= 0 and mat.first->map_Kd ) {
+			obj->setTexture( instance, mat.second, mat.first->map_Kd );
+		}
 	}
 	objects.emplace_back( obj );
 
@@ -359,6 +391,9 @@ void ObjectLoaderObj::Load( Instance* instance, File* file, bool static_ )
 
 	while ( file->ReadLine( line ) )
 	{
+		if ( line[0] == '#' ) {
+			continue;
+		}
 		tokenizer.clear();
 		tokenizer.str( line );
 
@@ -498,7 +533,7 @@ void ObjectLoaderObj::LoadMaterials( Instance* instance, File* base_file, std::s
 	std::string type;
 	std::string str;
 	std::map < std::string, Image* > textures;
-	float alpha = 0.0f;
+	float alpha = 1.0f;
 	float f1 = 0.0f;
 	float f2 = 0.0f;
 	float f3 = 0.0f;
@@ -506,6 +541,9 @@ void ObjectLoaderObj::LoadMaterials( Instance* instance, File* base_file, std::s
 
 	while ( file->ReadLine( line ) )
 	{
+		if ( line[0] == '#' ) {
+			continue;
+		}
 		tokenizer.clear();
 		tokenizer.str( line );
 
@@ -517,11 +555,11 @@ void ObjectLoaderObj::LoadMaterials( Instance* instance, File* base_file, std::s
 			mat = new Material;
 			memset( mat, 0, sizeof(Material) );
 			mMaterials.insert( std::pair< std::string, Material* >( str, mat ) );
+			alpha = 1.0f;
 		}
 
 		if ( type == "d" ) {
 			tokenizer >> alpha;
-			alpha = alpha;
 		}
 
 		if ( type == "Ka" ) {
@@ -564,7 +602,7 @@ void ObjectLoaderObj::LoadMaterials( Instance* instance, File* base_file, std::s
 				mat->map_Kd = textures.at( str );
 			} else {
 				File* texfile = new File( file, str, File::READ );
-				mat->map_Kd = new Image( texfile, "", instance );
+				mat->map_Kd = new Image( texfile, str.substr( str.rfind( "." ) + 1 ), instance );
 				textures.emplace( str, mat->map_Kd );
 				delete texfile;
 			}
@@ -575,7 +613,8 @@ void ObjectLoaderObj::LoadMaterials( Instance* instance, File* base_file, std::s
 			tokenizer >> str;
 			gDebug() << "bump map file : " << str << "\n";
 			File* texfile = new File( file, str, File::READ );
-			mat->map_bump = new Image( texfile, "", instance );
+			mat->map_bump = new Image( texfile, str.substr( str.rfind( "." ) + 1 ), instance );
+			mat->map_bump->setType( Image::ImageNorm );
 			delete texfile;
 		}
 	}

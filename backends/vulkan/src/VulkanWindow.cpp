@@ -32,6 +32,7 @@
 #include "VulkanInstance.h"
 #include "VulkanWindow.h"
 #include "Debug.h"
+#include "VulkanRenderPass.h"
 
 extern "C" GE::Window* CreateWindow( GE::Instance* instance, const std::string& title, int width, int height, VulkanWindow::Flags flags ) {
 	return new VulkanWindow( instance, title, width, height, flags );
@@ -51,6 +52,8 @@ VulkanWindow::VulkanWindow( Instance* instance, const std::string& title, int wi
 // 	, mClearCmdBuffer( 0 )
 	, mSurface( 0 )
 	, mSwapChain( 0 )
+	, mImageAvailableSemaphores { 0, 0 }
+	, mInFlightFences { 0, 0 }
 	, mClearColor( 0 )
 {
 #ifdef GE_WIN32
@@ -135,44 +138,6 @@ VulkanWindow::SwapChainSupportDetails VulkanWindow::querySwapChainSupport( VkPhy
 }
 
 
-void VulkanWindow::createRenderPass()
-{
-/*
-	VulkanInstance* instance = static_cast< VulkanInstance* >( mInstance );
-
-	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentReference colorAttachmentRef = {};
-	colorAttachmentRef.attachment = 0;
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;
-
-	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = 1;
-	renderPassInfo.pAttachments = &colorAttachment;
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
-
-	if ( vkCreateRenderPass( instance->device(), &renderPassInfo, nullptr, &mRenderPass ) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create render pass!");
-	}
-*/
-}
-
-
 void VulkanWindow::InitPresentableImage()
 {
 	VulkanInstance* instance = static_cast< VulkanInstance* >( mInstance );
@@ -180,15 +145,15 @@ void VulkanWindow::InitPresentableImage()
 
 	// Destroy previous context
 	if ( mSwapChainImageViews.size() > 0 ) {
+		vkWaitForFences( instance->device(), 1, &mInFlightFences[0], VK_TRUE, UINT64_MAX );
+		vkWaitForFences( instance->device(), 1, &mInFlightFences[1], VK_TRUE, UINT64_MAX );
 		vkQueueWaitIdle( instance->graphicsQueue() );
 		vkQueueWaitIdle( instance->presentationQueue() );
 		vkDeviceWaitIdle( instance->device() );
-		vkWaitForFences( instance->device(), 1, &mInFlightFences[0], VK_TRUE, UINT64_MAX );
-		vkWaitForFences( instance->device(), 1, &mInFlightFences[1], VK_TRUE, UINT64_MAX );
-		vkDestroySemaphore( instance->device(), mImageAvailableSemaphores[0], nullptr );
-		vkDestroySemaphore( instance->device(), mImageAvailableSemaphores[1], nullptr );
-		vkDestroyFence( instance->device(), mInFlightFences[0], nullptr );
-		vkDestroyFence( instance->device(), mInFlightFences[1], nullptr );
+// 		vkDestroySemaphore( instance->device(), mImageAvailableSemaphores[0], nullptr );
+// 		vkDestroySemaphore( instance->device(), mImageAvailableSemaphores[1], nullptr );
+// 		vkDestroyFence( instance->device(), mInFlightFences[0], nullptr );
+// 		vkDestroyFence( instance->device(), mInFlightFences[1], nullptr );
 		for ( auto img : mSwapChainImageViews ) {
 			vkDestroyImageView( instance->device(), img, nullptr );
 		}
@@ -252,13 +217,10 @@ void VulkanWindow::InitPresentableImage()
 		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	createInfo.presentMode = presentMode;
 	createInfo.clipped = VK_TRUE;
-	createInfo.oldSwapchain = VK_NULL_HANDLE;
-	if ( mSwapChain ) {
-		vkDestroySwapchainKHR( instance->device(), mSwapChain, nullptr );
-	}
+	createInfo.oldSwapchain = mSwapChain;
 	if ( vkCreateSwapchainKHR( instance->device(), &createInfo, nullptr, &mSwapChain ) != VK_SUCCESS ) {
 		throw std::runtime_error("failed to create swap chain!");
 	}
@@ -318,6 +280,7 @@ void VulkanWindow::InitPresentableImage()
 	if ( vkAllocateMemory( instance->device(), &allocInfo, nullptr, &mDepthImageMemory ) != VK_SUCCESS ) {
 		throw std::runtime_error("failed to allocate image memory!");
 	}
+	((VulkanInstance*)Instance::baseInstance())->AffectVRAM( memRequirements.size );
 	vkBindImageMemory( instance->device(), mDepthImage, mDepthImageMemory, 0 );
 
 	VkImageViewCreateInfo depthViewCreateInfo = {};
@@ -365,20 +328,25 @@ void VulkanWindow::InitPresentableImage()
 	}
 	mSwapChainFramebuffers.resize( mSwapChainImageViews.size() );
 	for (size_t i = 0; i < mSwapChainImageViews.size(); i++) {
-		if ( vkCreateFence( instance->device(), &fenceInfo, nullptr, &mInFlightFences[i] ) != VK_SUCCESS ) {
-			throw std::runtime_error("failed to create fence object for a frame!");
+		if ( mInFlightFences[i] == 0 ) {
+			if ( vkCreateFence( instance->device(), &fenceInfo, nullptr, &mInFlightFences[i] ) != VK_SUCCESS ) {
+				throw std::runtime_error("failed to create fence object for a frame!");
+			} else {
+				gDebug() << "created fence " << i;
+			}
 		}
-		if ( vkCreateSemaphore( instance->device(), &semaphoreInfo, nullptr, &mImageAvailableSemaphores[i] ) != VK_SUCCESS ) {
-			throw std::runtime_error("failed to create semaphore object for a frame!");
+		if ( mImageAvailableSemaphores[i] == 0 ) {
+			if ( vkCreateSemaphore( instance->device(), &semaphoreInfo, nullptr, &mImageAvailableSemaphores[i] ) != VK_SUCCESS ) {
+				throw std::runtime_error("failed to create semaphore object for a frame!");
+			} else {
+				gDebug() << "created sema " << i;
+			}
 		}
-// 		if ( vkCreateSemaphore( instance->device(), &semaphoreInfo, nullptr, &mRenderFinishedSemaphores[i] ) != VK_SUCCESS ) {
-// 			throw std::runtime_error("failed to create semaphore object for a frame!");
-// 		}
 
 		VkImageView attachments[] = { mSwapChainImageViews[i], mDepthImageView };
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = instance->renderPass();
+		framebufferInfo.renderPass = instance->renderPass()->renderPass();
 		framebufferInfo.attachmentCount = 2;
 		framebufferInfo.pAttachments = attachments;
 		framebufferInfo.width = mSwapChainExtent.width;
@@ -439,7 +407,7 @@ void VulkanWindow::createClearCommandBuffers()
 	subResourceRange.layerCount = 1;
 
 	VkImageSubresourceRange depthSubResourceRange = {};
-	depthSubResourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	depthSubResourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 	depthSubResourceRange.baseMipLevel = 0;
 	depthSubResourceRange.levelCount = 1;
 	depthSubResourceRange.baseArrayLayer = 0;
@@ -453,7 +421,7 @@ void VulkanWindow::createClearCommandBuffers()
 	// Record the command buffer for every swap chain image
 	for ( uint32_t i = 0; i < mSwapChainImages.size(); i++ ) {
 		vkResetCommandBuffer( mClearCommandBuffers[i], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
-/*
+
 		// Change layout of image to be optimal for clearing
 		// Note: previous layout doesn't matter, which will likely cause contents to be discarded
 		VkImageMemoryBarrier presentToClearBarrier_color = {};
@@ -503,32 +471,10 @@ void VulkanWindow::createClearCommandBuffers()
 		clearToPresentBarrier_depth.dstQueueFamilyIndex = instance->presentationQueueFamilyIndex();
 		clearToPresentBarrier_depth.image = mDepthImage;
 		clearToPresentBarrier_depth.subresourceRange = depthSubResourceRange;
-*/
+
 		// Record command buffer
 		vkBeginCommandBuffer( mClearCommandBuffers[i], &beginInfo );
 
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = instance->clearRenderPass();
-		renderPassInfo.framebuffer = mSwapChainFramebuffers[i]->framebuffer();
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = mSwapChainExtent;
-		std::array<VkClearValue, 2> clearValues = {};
-		clearValues[0].color = { .float32 = {
-			(float)( mClearColor & 0xFF ) / 255.0f,
-			(float)( ( mClearColor >> 8 ) & 0xFF ) / 255.0f,
-			(float)( ( mClearColor >> 16 ) & 0xFF ) / 255.0f,
-			(float)( ( mClearColor >> 24 ) & 0xFF ) / 255.0f,
-		}};
-		clearValues[1].depthStencil = {1.0f, 0};
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		vkCmdBeginRenderPass( mClearCommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
-			vkCmdSetViewport( mClearCommandBuffers[i], 0, 1, &mSwapChainFramebuffers[i]->viewport() );
-			vkCmdSetScissor( mClearCommandBuffers[i], 0, 1, &mSwapChainFramebuffers[i]->scissors() );
-		vkCmdEndRenderPass( mClearCommandBuffers[i] );
-/*
 			vkCmdPipelineBarrier( mClearCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier_color );
 			vkCmdClearColorImage( mClearCommandBuffers[i], mSwapChainImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &subResourceRange );
 			vkCmdPipelineBarrier( mClearCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &clearToPresentBarrier_color );
@@ -536,30 +482,12 @@ void VulkanWindow::createClearCommandBuffers()
 			vkCmdPipelineBarrier( mClearCommandBuffers[i], VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier_depth );
 			vkCmdClearDepthStencilImage( mClearCommandBuffers[i], mDepthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearDepth, 1, &depthSubResourceRange );
 			vkCmdPipelineBarrier( mClearCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 0, 0, nullptr, 0, nullptr, 1, &clearToPresentBarrier_depth );
-*/
+
 		if ( vkEndCommandBuffer( mClearCommandBuffers[i] ) != VK_SUCCESS ) {
 			std::cerr << "failed to record command buffer" << std::endl;
 			exit(1);
 		}
 	}
-
-
-/*
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		if ( vkBeginCommandBuffer( commandBuffer, &beginInfo ) != VK_SUCCESS ) {
-			throw std::runtime_error("failed to begin recording command buffer!");
-		}
-		vkCmdBeginRenderPass( commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
-			vkCmdSetViewport( commandBuffer, 0, 1, &currentFramebuffer->viewport() );
-			vkCmdSetScissor( commandBuffer, 0, 1, &currentFramebuffer->scissors() );
-			vkCmdBindPipeline( commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline );
-			vkCmdBindDescriptorSets( commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, 1, &mUniformsDescriptorSet, 0, nullptr );
-			PopulateCommandBuffer( commandBuffer );
-// 			vkCmdExecuteCommands( commandBuffer, 1, &mCommandBuffer );
-		vkCmdEndRenderPass( commandBuffer );
-*/
 }
 
 
@@ -573,7 +501,7 @@ void VulkanWindow::Clear( uint32_t color )
 	}
 
 	VkSubmitInfo submitInfo = {};
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = &mImageAvailableSemaphores[mBackImageIndex];
@@ -589,7 +517,6 @@ void VulkanWindow::Clear( uint32_t color )
 		std::cerr << "failed to submit draw command buffer" << std::endl;
 		exit(1);
 	}
-	vkQueueWaitIdle( static_cast< VulkanInstance* >( mInstance )->graphicsQueue() );
 }
 
 
@@ -611,12 +538,12 @@ void VulkanWindow::SwapBuffers()
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &mSwapChain;
 	presentInfo.pImageIndices = &mBackImageIndex;
-	vkQueuePresentKHR( instance->presentationQueue(), &presentInfo );
+	VkResult result = vkQueuePresentKHR( instance->presentationQueue(), &presentInfo );
 
 
 	SwapBuffersBase();
 
-	if ( mHasResized ) {
+	if ( result == VK_ERROR_OUT_OF_DATE_KHR or result == VK_SUBOPTIMAL_KHR or mHasResized ) {
 		mHasResized = false;
 		InitPresentableImage();
 		createClearCommandBuffers();

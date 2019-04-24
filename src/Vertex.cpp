@@ -24,10 +24,10 @@
 
 namespace GE {
 
-Vertex::Vertex( const Vector3f& pos, const Vector4f& color, const Vector3f& normal, const Vector3f& texcoords )
-	: u( texcoords.x ), v( texcoords.y ), w( texcoords.z ), _align1( 0.0f )
+Vertex::Vertex( const Vector3f& pos, const Vector4f& color, const Vector3f& normal, const Vector4f& texcoords )
+	: u( texcoords.x ), v( texcoords.y ), w( texcoords.z ), texid( texcoords.w )
 	, color{ color.x, color.y, color.z, color.w }
-	, nx( normal.x ), ny( normal.y ), nz( normal.z ), _align2( 0.0f )
+	, nx( normal.x ), ny( normal.y ), nz( normal.z ), _align1( 0.0f )
 	, x( pos.x ), y( pos.y ), z( pos.z ), weight( 0.0f )
 {
 }

@@ -40,6 +40,10 @@ public:
 		ImageDepth,
 		ImageNorm
 	} Type;
+	typedef enum {
+		Linear,
+		Nearest
+	} Filtering;
 
 	Image();
 	Image( File* file, const std::string& extension = "", Instance* instance = nullptr );
@@ -48,6 +52,7 @@ public:
 	~Image();
 
 	Type type() const;
+	Filtering filtering() const;
 	uint32_t width() const;
 	uint32_t height() const;
 	uint32_t* data() const;
@@ -57,6 +62,7 @@ public:
 	void UpdateData( Instance* instance = nullptr );
 
 	void setType( const Type& type );
+	void setFiltering( const Filtering& f );
 	void setColor( uint32_t c );
 	void Resize( uint32_t width, uint32_t height );
 	void Release();
@@ -67,6 +73,7 @@ protected:
 	void Load( File* file, const std::string& extension, Instance* instance );
 	Instance* mAllocInstance;
 	Type mType;
+	Filtering mFiltering;
 	uint32_t mWidth;
 	uint32_t mHeight;
 	uint32_t* mData;

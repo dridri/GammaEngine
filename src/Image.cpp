@@ -48,6 +48,7 @@ static uint32_t geGetNextPower2( uint32_t width )
 Image::Image()
 	: mAllocInstance( nullptr )
 	, mType( ImageColor )
+	, mFiltering( Linear )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
@@ -59,6 +60,7 @@ Image::Image()
 Image::Image( File* file, const std::string& extension, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
 	, mType( ImageColor )
+	, mFiltering( Linear )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
@@ -72,6 +74,7 @@ Image::Image( File* file, const std::string& extension, Instance* instance )
 Image::Image( const std::string& filename, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
 	, mType( ImageColor )
+	, mFiltering( Linear )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
@@ -90,6 +93,7 @@ Image::Image( const std::string& filename, Instance* instance )
 Image::Image( uint32_t width, uint32_t height, uint32_t backcolor, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
 	, mType( ImageColor )
+	, mFiltering( Linear )
 	, mWidth( width )
 	, mHeight( height )
 	, mData( nullptr )
@@ -199,6 +203,12 @@ Image::Type Image::type() const
 }
 
 
+Image::Filtering Image::filtering() const
+{
+	return mFiltering;
+}
+
+
 uint32_t Image::width() const
 {
 	return mWidth;
@@ -226,6 +236,12 @@ uint32_t Image::color() const
 void Image::setType( const Image::Type& type )
 {
 	mType = type;
+}
+
+
+void Image::setFiltering( const Filtering& f )
+{
+	mFiltering = f;
 }
 
 

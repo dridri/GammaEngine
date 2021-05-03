@@ -24,6 +24,7 @@
 #include <string>
 #include <stdint.h>
 #include "Vector.h"
+#include "Vertex.h"
 #include "Matrix.h"
 
 namespace GE {
@@ -77,6 +78,7 @@ public:
 
 	virtual void Compute() = 0;
 	virtual void Draw() = 0;
+	virtual void Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount = 1, uint32_t baseInstance = 0 ) = 0;
 	virtual void Look( Camera* cam ) = 0;
 
 	virtual Matrix* projectionMatrix() = 0;
@@ -88,6 +90,9 @@ public:
 	virtual void uniformUpload( const uintptr_t id, const Vector3f& v ) = 0;
 	virtual void uniformUpload( const uintptr_t id, const Vector4f& v ) = 0;
 	virtual void uniformUpload( const uintptr_t id, const Matrix& v ) = 0;
+
+	virtual void UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count ) = 0;
+	virtual void UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count ) = 0;
 };
 
 } // namespace GE

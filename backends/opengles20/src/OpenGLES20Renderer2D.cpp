@@ -60,7 +60,7 @@ static const char fragment_shader_base[] =
 "\n"
 "	void main()\n"
 "	{\n"
-"		ge_FragColor = /*ge_Color * */texture( ge_Texture0, ge_TextureCoord.xy );\n"
+"		ge_FragColor = ge_Color * texture( ge_Texture0, ge_TextureCoord.xy );\n"
 "	}\n"
 ;
 
@@ -632,6 +632,8 @@ void OpenGLES20Renderer2D::DrawText( int x, int y, Font* font, uint32_t color, c
 
 void OpenGLES20Renderer2D::DrawLine( int x0, int y0, uint32_t color0, int x1, int y1, uint32_t color1 )
 {
+	Prerender();
+
 	Matrix matrix;
 	Vertex2D vertices[6*2];
 	memset( vertices, 0, sizeof(vertices) );

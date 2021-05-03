@@ -180,11 +180,12 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 // 		std::string backend_lib = "vulkan";
 	std::string backend_lib = "opengl43";
 #endif
-	std::string prefixes[10] = {
-		"backend_",
-		"backends/",
-		"gammaengine/backend_",
-		"gammaengine/backends/",
+	std::string prefixes[11] = {
+		"./backend_",
+		"./backends/",
+		"./build/backend_",
+		"./gammaengine/backend_",
+		"./gammaengine/backends/",
 		"/usr/local/lib/backend_",
 		"/usr/local/lib/gammaengine/backend_",
 		"/usr/local/lib/gammaengine/backends/",
@@ -196,7 +197,7 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 		backend_lib = backend_file;
 	}
 	int i = 0;
-	for ( i = 0; i < 10 && !local_backend; i++ ) {
+	for ( i = 0; i < 11 && !local_backend; i++ ) {
 		local_backend = LoadLib( prefixes[i] + backend_lib + lib_suffix );
 		if ( local_backend == nullptr ) {
 #ifdef GE_WIN32
@@ -204,12 +205,14 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 #else
 			gDebug() << "Backend ( " << backend_lib << " ) loading error : " << LibError() << "\n";
 #endif
+		} else {
+			break;
 		}
 	}
 	if ( local_backend == nullptr ) {
 		exit(0);
 	} else {
-		gDebug() << "Backend file " << prefixes[--i] << backend_lib << lib_suffix << " loaded !\n";
+		gDebug() << "Backend file " << prefixes[i] << backend_lib << lib_suffix << " loaded !\n";
 	}
 
 	typedef Instance* (*f_type)( void*, const char*, uint32_t );

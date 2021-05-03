@@ -34,6 +34,7 @@ public:
 	static void GlobalSync();
 	static double Delta();
 	static uint64_t GetTick();
+	static uint64_t GetTickMicros();
 	static float GetSeconds();
 	static uint64_t WaitTick( uint64_t t, uint64_t last );
 	static void Sleep( uint64_t t );

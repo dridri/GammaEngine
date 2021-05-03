@@ -153,6 +153,36 @@ uint64_t Time::GetTick()
 }
 
 
+uint64_t Time::GetTickMicros()
+{
+	if ( sStartTime == 0 ) {
+	#ifdef GE_WIN32
+		sStartTime = timeGetTime() * 1000;
+	#elif GE_IOS
+		struct timeval cTime;
+		gettimeofday( &cTime, 0 );
+		sStartTime = ( cTime.tv_sec * 1000000 ) + cTime.tv_usec;
+	#else
+		struct timespec now;
+		clock_gettime( CLOCK_MONOTONIC, &now );
+		sStartTime = now.tv_sec * 1000000 + now.tv_nsec / 1000;
+	#endif
+	}
+
+#ifdef GE_WIN32
+	return timeGetTime() * 1000 - sStartTime - sPause;
+#elif GE_IOS
+	struct timeval cTime;
+	gettimeofday( &cTime, 0 );
+	return ( cTime.tv_sec * 1000000 ) + cTime.tv_usec - sStartTime - sPause;
+#else
+	struct timespec now;
+	clock_gettime( CLOCK_MONOTONIC, &now );
+	return now.tv_sec * 1000000 + now.tv_nsec / 1000 - sStartTime - sPause;
+#endif
+}
+
+
 float Time::GetSeconds()
 {
 	return (double)GetTick() / 1000.0;

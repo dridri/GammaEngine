@@ -59,6 +59,7 @@ public:
 
 	static const std::string& DumpLog() { return mLog; }
 	static uint64_t GetTicks();
+	static uint64_t GetTicksMicros();
 
 private:
 	static void log( const std::string& s );

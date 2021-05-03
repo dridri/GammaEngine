@@ -55,4 +55,10 @@ uint64_t Debug::GetTicks()
 	return Time::GetTick();
 }
 
+
+uint64_t Debug::GetTicksMicros()
+{
+	return Time::GetTickMicros();
+}
+
 } // namespace GE

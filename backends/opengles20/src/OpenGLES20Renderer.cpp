@@ -446,6 +446,11 @@ void OpenGLES20Renderer::UpdateVertexArray( VertexBase* data, uint32_t offset, u
 }
 
 
+void OpenGLES20Renderer::UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count )
+{
+}
+
+
 void OpenGLES20Renderer::Draw()
 {
 /*
@@ -508,7 +513,11 @@ void OpenGLES20Renderer::Draw()
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 	glUseProgram( 0 );
+}
 
+
+void OpenGLES20Renderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount, uint32_t baseInstance )
+{
 }
 
 

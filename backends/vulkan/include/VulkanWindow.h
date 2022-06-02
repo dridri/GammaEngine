@@ -82,10 +82,11 @@ private:
 // 	VkRenderPass mRenderPass;
 	std::vector<VulkanFramebuffer*> mSwapChainFramebuffers;
 
-	VkSemaphore mImageAvailableSemaphores[2];
-// 	VkSemaphore mRenderFinishedSemaphores[2];
-	VkFence mInFlightFences[2];
+	VkSemaphore mImageAvailableSemaphores[4];
+// 	VkSemaphore mRenderFinishedSemaphores[4];
+	VkFence mInFlightFences[4];
 
+	uint32_t mCurrentFrame;
 	uint32_t mBackImageIndex;
 	std::vector< VkCommandBuffer > mClearCommandBuffers;
 	uint32_t mClearColor;

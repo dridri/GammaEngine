@@ -52,8 +52,9 @@ VulkanWindow::VulkanWindow( Instance* instance, const std::string& title, int wi
 // 	, mClearCmdBuffer( 0 )
 	, mSurface( 0 )
 	, mSwapChain( 0 )
-	, mImageAvailableSemaphores { 0, 0 }
-	, mInFlightFences { 0, 0 }
+	, mImageAvailableSemaphores { 0, 0, 0, 0 }
+	, mInFlightFences { 0, 0, 0, 0 }
+	, mCurrentFrame( 0 )
 	, mClearColor( 0 )
 {
 #ifdef GE_WIN32
@@ -81,7 +82,7 @@ VulkanWindow::VulkanWindow( Instance* instance, const std::string& title, int wi
 	if ( ( flags & Window::Hidden ) == false ) {
 		InitPresentableImage();
 		createClearCommandBuffers();
-		vkAcquireNextImageKHR( static_cast< VulkanInstance* >( mInstance )->device(), mSwapChain, UINT64_MAX, mImageAvailableSemaphores[0], VK_NULL_HANDLE, &mBackImageIndex );
+		vkAcquireNextImageKHR( static_cast< VulkanInstance* >( mInstance )->device(), mSwapChain, UINT64_MAX, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &mBackImageIndex );
 	}
 }
 
@@ -145,18 +146,29 @@ void VulkanWindow::InitPresentableImage()
 
 	// Destroy previous context
 	if ( mSwapChainImageViews.size() > 0 ) {
-		vkWaitForFences( instance->device(), 1, &mInFlightFences[0], VK_TRUE, UINT64_MAX );
-		vkWaitForFences( instance->device(), 1, &mInFlightFences[1], VK_TRUE, UINT64_MAX );
+		vkWaitForFences( instance->device(), mSwapChainImageViews.size(), mInFlightFences, VK_TRUE, UINT64_MAX );
 		vkQueueWaitIdle( instance->graphicsQueue() );
 		vkQueueWaitIdle( instance->presentationQueue() );
 		vkDeviceWaitIdle( instance->device() );
-// 		vkDestroySemaphore( instance->device(), mImageAvailableSemaphores[0], nullptr );
-// 		vkDestroySemaphore( instance->device(), mImageAvailableSemaphores[1], nullptr );
-// 		vkDestroyFence( instance->device(), mInFlightFences[0], nullptr );
-// 		vkDestroyFence( instance->device(), mInFlightFences[1], nullptr );
+		/*
+		for (size_t i = 0; i < mSwapChainImageViews.size(); i++) {
+			vkDestroySemaphore( instance->device(), mImageAvailableSemaphores[i], nullptr );
+			vkDestroyFence( instance->device(), mInFlightFences[i], nullptr );
+			mImageAvailableSemaphores[i] = nullptr;
+			mInFlightFences[i] = nullptr;
+		}
+		*/
+		vkDestroyImageView( instance->device(), mDepthImageView, nullptr );
+		vkFreeMemory( instance->device(), mDepthImageMemory, nullptr );
+		vkDestroyImage( instance->device(), mDepthImage, nullptr );
+		mDepthImageView = nullptr;
+		mDepthImageMemory = nullptr;
+		mDepthImage = nullptr;
 		for ( auto img : mSwapChainImageViews ) {
 			vkDestroyImageView( instance->device(), img, nullptr );
 		}
+// 		vkDestroySwapchainKHR( instance->device(), mSwapChain, nullptr );
+// 		mSwapChain = nullptr;
 	}
 
 
@@ -202,7 +214,7 @@ void VulkanWindow::InitPresentableImage()
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = mSurface;
 
-	createInfo.minImageCount = 2;
+	createInfo.minImageCount = 3;
 	createInfo.imageFormat = mSurfaceFormat.format;
 	createInfo.imageColorSpace = mSurfaceFormat.colorSpace;
 	createInfo.imageExtent = mSwapChainExtent;
@@ -223,6 +235,9 @@ void VulkanWindow::InitPresentableImage()
 	createInfo.oldSwapchain = mSwapChain;
 	if ( vkCreateSwapchainKHR( instance->device(), &createInfo, nullptr, &mSwapChain ) != VK_SUCCESS ) {
 		throw std::runtime_error("failed to create swap chain!");
+	}
+	if ( createInfo.oldSwapchain ) {
+		vkDestroySwapchainKHR( instance->device(), createInfo.oldSwapchain, nullptr );
 	}
 
 	uint32_t imageCount = 0;
@@ -307,28 +322,34 @@ void VulkanWindow::InitPresentableImage()
 
 	VkFenceCreateInfo fenceInfo = {};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+// 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	VkViewport viewport = {
 		.x = 0.0f,
 		.y = 0.0f,
-		.width = (float)mWidth,
-		.height = (float)mHeight,
+		.width = (float)mSwapChainExtent.width,
+		.height = (float)mSwapChainExtent.height,
 		.minDepth = 0.0f,
 		.maxDepth = 1.0f
 	};
 	VkRect2D scissors = {
 		{ 0, 0 },
-		{ mWidth, mHeight }
+		{ mSwapChainExtent.width, mSwapChainExtent.height }
 	};
 
 	for ( auto fb : mSwapChainFramebuffers ) {
-		delete fb;
+	//	delete fb;
+	}
+	if ( mSwapChainFramebuffers.size() > mSwapChainImageViews.size() ) {
+		// TODO : notify uses of framebuffers >= mSwapChainImageViews.size() that they have to be destroyed
 	}
 	mSwapChainFramebuffers.resize( mSwapChainImageViews.size() );
 	for (size_t i = 0; i < mSwapChainImageViews.size(); i++) {
 		if ( mInFlightFences[i] == 0 ) {
+			if ( i > 0 ) {
+				fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+			}
 			if ( vkCreateFence( instance->device(), &fenceInfo, nullptr, &mInFlightFences[i] ) != VK_SUCCESS ) {
 				throw std::runtime_error("failed to create fence object for a frame!");
 			} else {
@@ -357,9 +378,23 @@ void VulkanWindow::InitPresentableImage()
 		if ( vkCreateFramebuffer( instance->device(), &framebufferInfo, nullptr, &fb ) != VK_SUCCESS ) {
 			throw std::runtime_error("failed to create framebuffer!");
 		}
-		mSwapChainFramebuffers[i] = new VulkanFramebuffer( static_cast<VulkanInstance*>(mInstance), fb, viewport, scissors, mInFlightFences[i], mImageAvailableSemaphores[i] );
-		gDebug() << "created fb " << mSwapChainFramebuffers[i] << ", " << mSwapChainFramebuffers[i]->hash();
+		if ( mSwapChainFramebuffers[i] ) {
+			gDebug() << "update fb from " << mSwapChainFramebuffers[i]->framebuffer();
+			if ( mSwapChainFramebuffers[i]->framebuffer() ) {
+// 				vkDestroyFramebuffer( instance->device(), mSwapChainFramebuffers[i]->framebuffer(), nullptr );
+			}
+			VulkanFramebuffer* next = new VulkanFramebuffer( static_cast<VulkanInstance*>(mInstance), fb, viewport, scissors, mInFlightFences[i], mImageAvailableSemaphores[i] );
+			*mSwapChainFramebuffers[i] = *next;
+			free( next );
+			gDebug() << "updated fb " << mSwapChainFramebuffers[i] << ", " << mSwapChainFramebuffers[i]->hash();
+			gDebug() << "update fb to " << mSwapChainFramebuffers[i]->framebuffer();
+		} else {
+			mSwapChainFramebuffers[i] = new VulkanFramebuffer( static_cast<VulkanInstance*>(mInstance), fb, viewport, scissors, mInFlightFences[i], mImageAvailableSemaphores[i] );
+			gDebug() << "created fb " << mSwapChainFramebuffers[i] << ", " << mSwapChainFramebuffers[i]->hash();
+		}
 	}
+	gDebug() << "Viewport : " << mWidth << " x " << mHeight;
+	gDebug() << "Extent : " << mSwapChainExtent.width << " x " << mSwapChainExtent.height;
 }
 
 
@@ -504,16 +539,17 @@ void VulkanWindow::Clear( uint32_t color )
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &mImageAvailableSemaphores[mBackImageIndex];
+	submitInfo.pWaitSemaphores = &mImageAvailableSemaphores[mCurrentFrame];
 	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &mImageAvailableSemaphores[mBackImageIndex];
+	submitInfo.signalSemaphoreCount = 0;
+	submitInfo.pSignalSemaphores = &mImageAvailableSemaphores[mCurrentFrame];
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &mClearCommandBuffers[mBackImageIndex];
 
-	vkWaitForFences( static_cast< VulkanInstance* >( mInstance )->device(), 1, &mInFlightFences[mBackImageIndex], VK_TRUE, UINT64_MAX );
-	vkResetFences( static_cast< VulkanInstance* >( mInstance )->device(), 1, &mInFlightFences[mBackImageIndex] );
-	if ( vkQueueSubmit( instance->graphicsQueue(), 1, &submitInfo, mInFlightFences[mBackImageIndex] ) != VK_SUCCESS ) {
+// 	vkWaitForFences( static_cast< VulkanInstance* >( mInstance )->device(), 1, &mInFlightFences[mCurrentFrame], VK_TRUE, UINT64_MAX );
+	vkResetFences( static_cast< VulkanInstance* >( mInstance )->device(), 1, &mInFlightFences[mCurrentFrame] );
+
+	if ( instance->graphicsQueueSubmit( 1, &submitInfo, mInFlightFences[mCurrentFrame] ) != VK_SUCCESS ) {
 		std::cerr << "failed to submit draw command buffer" << std::endl;
 		exit(1);
 	}
@@ -533,8 +569,8 @@ void VulkanWindow::SwapBuffers()
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &mImageAvailableSemaphores[mBackImageIndex];
+	presentInfo.waitSemaphoreCount = 0;
+	presentInfo.pWaitSemaphores = &mImageAvailableSemaphores[mCurrentFrame];
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &mSwapChain;
 	presentInfo.pImageIndices = &mBackImageIndex;
@@ -549,9 +585,9 @@ void VulkanWindow::SwapBuffers()
 		createClearCommandBuffers();
 	}
 
-
-	vkWaitForFences( static_cast< VulkanInstance* >( mInstance )->device(), 1, &mInFlightFences[(mBackImageIndex+1)%2], VK_TRUE, UINT64_MAX );
-	vkAcquireNextImageKHR( static_cast< VulkanInstance* >( mInstance )->device(), mSwapChain, UINT64_MAX, mImageAvailableSemaphores[(mBackImageIndex+1)%2], VK_NULL_HANDLE, &mBackImageIndex );
+	mCurrentFrame = ( mCurrentFrame + 1 ) % 3;
+	vkWaitForFences( static_cast< VulkanInstance* >( mInstance )->device(), 1, &mInFlightFences[mCurrentFrame], VK_TRUE, UINT64_MAX );
+	vkAcquireNextImageKHR( static_cast< VulkanInstance* >( mInstance )->device(), mSwapChain, UINT64_MAX, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &mBackImageIndex );
 }
 
 

@@ -31,7 +31,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <memory>
 #include <functional>
+#include <mutex>
 #include "Instance.h"
 #include "Thread.h"
 #include <vulkan/vulkan.h>
@@ -68,13 +70,18 @@ public:
 	int32_t findQueueFamilyIndex( std::function< bool( uint32_t, VkQueueFamilyProperties* ) > cb );
 	VkQueue graphicsQueue() const { return mGraphicsQueue; }
 	VkQueue presentationQueue() const { return mPresentationQueue; }
-	VkCommandPool commandPool() const { return mCommandPool; }
+	VkQueue transferQueue() const { return mTransferQueue; }
+	VkCommandPool commandPool();
 	uint32_t graphicsQueueFamilyIndex() const { return mGraphicsQueueFamilyIndex; }
 	uint32_t presentationQueueFamilyIndex() const { return mPresentationQueueFamilyIndex; }
 	VulkanRenderPass* renderPass() const { return mRenderPass; }
 
 	std::map< Thread*, VulkanFramebuffer* >& boundFramebuffers() { return mBoundFramebuffers; }
-	VulkanFramebuffer* boundFramebuffer( Thread* thread ) { return mBoundFramebuffers[thread]; }
+	VulkanFramebuffer*& boundFramebuffer( Thread* thread ) { return mBoundFramebuffers[thread]; }
+
+	VkResult graphicsQueueSubmit( uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence );
+	VkResult presentationQueueSubmit( uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence );
+	VkResult transferQueueSubmit( uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence );
 
 	uint32_t FindMemoryType( uint32_t typeFilter, VkMemoryPropertyFlags properties );
 	VkResult CreateBuffer( VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory );
@@ -107,10 +114,17 @@ private:
 	int32_t mDeviceId;
 	int32_t mGraphicsQueueFamilyIndex;
 	int32_t mPresentationQueueFamilyIndex;
+	int32_t mTransferQueueFamilyIndex;
 	VkQueue mGraphicsQueue;
 	VkQueue mPresentationQueue;
+	VkQueue mTransferQueue;
+	std::mutex* mGraphicsQueueMutex;
+	std::mutex* mPresentationQueueMutex;
+	std::mutex* mTransferQueueMutex;
 	VkCommandPool mCommandPool;
+	std::map< pthread_t, VkCommandPool > mCommandPools;
 	VkCommandBuffer mCommandBuffer;
+	VkFence mTranferFence;
 
 	VulkanRenderPass* mRenderPass;
 // 	VkRenderPass mClearRenderPass;

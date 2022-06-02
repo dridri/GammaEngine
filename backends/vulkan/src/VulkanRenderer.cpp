@@ -286,6 +286,7 @@ void VulkanRenderer::createPipeline( uint32_t textures_count, bool basic )
 	descriptorSetLayout.push_back( { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_VERTEX_BIT } );
 	mInstance->CreateBuffer( mUniformsBuffer.size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mUniformsBuffer.device.buffer, &mUniformsBuffer.device.memory );
 	mInstance->CreateBuffer( mUniformsBuffer.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &mUniformsBuffer.host.buffer, &mUniformsBuffer.host.memory );
+	vkMapMemory( mInstance->device(), mUniformsBuffer.host.memory, 0, mUniformsBuffer.size, 0, &mUniformsBuffer.host.mapped );
 
 	// Textures
 	descriptorSetLayout.push_back( { .binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = textures_count, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT } );
@@ -583,9 +584,9 @@ void VulkanRenderer::Compute()
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
-	mInstance->CreateBuffer( verticesCount * mVertexDefinition.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
+	mInstance->CreateBuffer( verticesCount * mVertexDefinition.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
 	mVertexBuffer = std::make_pair( stagingBufferMemory, stagingBuffer );
-	mInstance->CreateBuffer( verticesCount * mVertexDefinition.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
+	mInstance->CreateBuffer( verticesCount * mVertexDefinition.size(), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |  VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &stagingBuffer, &stagingBufferMemory );
 	mIndicesBuffer = std::make_pair( stagingBufferMemory, stagingBuffer );
 
 	void* data;
@@ -607,12 +608,13 @@ void VulkanRenderer::Compute()
 
 	// Objects matrices
 	mMatricesBuffer.size = sizeof(float) * 16 * mTotalObjectsInstances;
-	mInstance->CreateBuffer( mMatricesBuffer.size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mMatricesBuffer.device.buffer, &mMatricesBuffer.device.memory );
+	mInstance->CreateBuffer( mMatricesBuffer.size, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mMatricesBuffer.device.buffer, &mMatricesBuffer.device.memory );
 	mInstance->CreateBuffer( mMatricesBuffer.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &mMatricesBuffer.host.buffer, &mMatricesBuffer.host.memory );
+	vkMapMemory( mInstance->device(), mMatricesBuffer.host.memory, 0, mMatricesBuffer.size, 0, &mMatricesBuffer.host.mapped );
 
 	// Objects textures indices
 	mTexturesIndicesBuffer.size = sizeof(uint32_t) * 4 * textureBases.size();
-	mInstance->CreateBuffer( mTexturesIndicesBuffer.size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mTexturesIndicesBuffer.device.buffer, &mTexturesIndicesBuffer.device.memory );
+	mInstance->CreateBuffer( mTexturesIndicesBuffer.size, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mTexturesIndicesBuffer.device.buffer, &mTexturesIndicesBuffer.device.memory );
 	mInstance->CreateBuffer( mTexturesIndicesBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory );
 	vkMapMemory( mInstance->device(), stagingBufferMemory, 0, mTexturesIndicesBuffer.size, 0, &data );
 	for ( uint32_t i = 0; i < textureBases.size(); i++ ) {
@@ -633,7 +635,7 @@ void VulkanRenderer::Compute()
 	// Indirect draw buffers
 	mIndirectBuffer.size = sizeof(VkDrawIndirectCommand) * dIndirect.size();
 	if ( mIndirectBuffer.size > 0 ) {
-		mInstance->CreateBuffer( mIndirectBuffer.size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mIndirectBuffer.device.buffer, &mIndirectBuffer.device.memory );
+		mInstance->CreateBuffer( mIndirectBuffer.size, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mIndirectBuffer.device.buffer, &mIndirectBuffer.device.memory );
 
 		mInstance->CreateBuffer( mIndirectBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory );
 		vkMapMemory( mInstance->device(), stagingBufferMemory, 0, mIndirectBuffer.size, 0, &data );
@@ -646,7 +648,7 @@ void VulkanRenderer::Compute()
 
 	mIndexedIndirectBuffer.size = sizeof(VkDrawIndexedIndirectCommand) * dIndexedIndirect.size();
 	if ( mIndexedIndirectBuffer.size > 0 ) {
-		mInstance->CreateBuffer( mIndexedIndirectBuffer.size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mIndexedIndirectBuffer.device.buffer, &mIndexedIndirectBuffer.device.memory );
+		mInstance->CreateBuffer( mIndexedIndirectBuffer.size, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mIndexedIndirectBuffer.device.buffer, &mIndexedIndirectBuffer.device.memory );
 
 		mInstance->CreateBuffer( mIndexedIndirectBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory );
 		vkMapMemory( mInstance->device(), stagingBufferMemory, 0, mIndexedIndirectBuffer.size, 0, &data );
@@ -672,7 +674,7 @@ void VulkanRenderer::Draw()
 	bool changed = ( exists and ( currentFramebuffer->hash() != mFramebuffersHashes[currentFramebuffer] ) );
 
 	if ( exists == false or changed ) {
-		gDebug() << "Creating new fb commands";
+		gDebug() << "Creating new fb commands for fb " << currentFramebuffer << ", " << currentFramebuffer->hash();
 		VkCommandBuffer commandBuffer;
 
 		VkCommandBufferAllocateInfo allocInfo = {};
@@ -681,13 +683,14 @@ void VulkanRenderer::Draw()
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandBufferCount = 1;
 
-		if ( changed ) {
-			commandBuffer = mRenderCommandBuffers[currentFramebuffer];
-			vkResetCommandBuffer( commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
-		} else {
+		if ( !exists ) {
+			gDebug() << "Alloc";
 			if ( vkAllocateCommandBuffers( mInstance->device(), &allocInfo, &commandBuffer ) != VK_SUCCESS ) {
 				throw std::runtime_error("failed to allocate command buffers!");
 			}
+		} else {
+			commandBuffer = mRenderCommandBuffers[currentFramebuffer];
+			vkResetCommandBuffer( commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
 		}
 
 		VkRenderPassBeginInfo renderPassInfo = {};
@@ -727,15 +730,9 @@ void VulkanRenderer::Draw()
 		mFramebuffersHashes[currentFramebuffer] = currentFramebuffer->hash();
 	}
 
-	void* data;
-	vkMapMemory( mInstance->device(), mUniformsBuffer.host.memory, 0, mUniformsBuffer.size, 0, &data );
-	memcpy( &((float*)data)[0], mMatrixProjection->data(), sizeof(float) * 16 );
-	memcpy( &((float*)data)[16], mMatrixView->data(), sizeof(float) * 16 );
-	vkUnmapMemory( mInstance->device(), mUniformsBuffer.host.memory );
-
-	vkMapMemory( mInstance->device(), mMatricesBuffer.host.memory, 0, mMatricesBuffer.size, 0, &data );
-	memcpy( data, mMatrixObjects, mMatricesBuffer.size );
-	vkUnmapMemory( mInstance->device(), mMatricesBuffer.host.memory );
+	memcpy( &((float*)mUniformsBuffer.host.mapped)[0], mMatrixProjection->data(), sizeof(float) * 16 );
+	memcpy( &((float*)mUniformsBuffer.host.mapped)[16], mMatrixView->data(), sizeof(float) * 16 );
+	memcpy( mMatricesBuffer.host.mapped, mMatrixObjects, mMatricesBuffer.size );
 
 
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -751,11 +748,17 @@ void VulkanRenderer::Draw()
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &mRenderCommandBuffers[currentFramebuffer];
 
-// 	currentFramebuffer->waitFence();
-	if ( vkQueueSubmit( mInstance->graphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE ) != VK_SUCCESS ) {
+//	currentFramebuffer->waitFence();
+
+	if ( mInstance->graphicsQueueSubmit( 1, &submitInfo, VK_NULL_HANDLE ) != VK_SUCCESS ) {
 		std::cerr << "failed to submit draw command buffer" << std::endl;
 		exit(1);
 	}
+}
+
+
+void VulkanRenderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount, uint32_t baseInstance )
+{
 }
 
 
@@ -799,6 +802,16 @@ void VulkanRenderer::uniformUpload( const uintptr_t id, const Vector4f& v )
 
 
 void VulkanRenderer::uniformUpload( const uintptr_t id, const Matrix& v )
+{
+}
+
+
+void VulkanRenderer::UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count )
+{
+}
+
+
+void VulkanRenderer::UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count )
 {
 }
 

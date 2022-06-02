@@ -37,6 +37,7 @@ Object::Object( VertexBase* verts, uint32_t nVerts, uint32_t* indices, uint32_t 
 	, mVerticesCount( nVerts )
 	, mIndices( indices )
 	, mIndicesCount( nIndices )
+	, mIndicesRenderCount( nIndices )
 	, mMatrix( new Matrix() )
 {
 	mMatrices.insert( mMatrices.begin(), mMatrix );
@@ -49,6 +50,7 @@ Object::Object( const std::string filename, bool static_, Instance* instance )
 	, mVerticesCount( 0 )
 	, mIndices( nullptr )
 	, mIndicesCount( 0 )
+	, mIndicesRenderCount( 0 )
 	, mMatrix( new Matrix() )
 {
 	if ( !instance ) {
@@ -68,6 +70,7 @@ Object::Object( const std::string filename, bool static_, Instance* instance )
 		mIndices = loader->mIndices;
 		mVerticesCount = loader->mVerticesCount;
 		mIndicesCount = loader->mIndicesCount;
+		mIndicesRenderCount = loader->mIndicesCount;
 
 // 		delete loader;
 		free( loader );
@@ -225,6 +228,12 @@ uint32_t Object::indicesCount() const
 }
 
 
+uint32_t Object::indicesRenderCount() const
+{
+	return mIndicesRenderCount;
+}
+
+
 VertexBase* Object::vertices() const
 {
 	return mVertices;
@@ -259,6 +268,12 @@ int Object::instancesCount() const
 void Object::setName( const std::string& name )
 {
 	mName = name;
+}
+
+
+void Object::setIndicesRenderCount( uint32_t count )
+{
+	mIndicesRenderCount = count;
 }
 
 

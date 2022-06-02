@@ -78,7 +78,7 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 		GLX_BLUE_SIZE, 8,
 		GLX_ALPHA_SIZE, 8,
 		GLX_DEPTH_SIZE, 24,
-// 		GLX_SAMPLE_BUFFERS, 1,
+// 		GLX_SAMPLE_BUFFERS, True,
 // 		GLX_SAMPLES, 4,
 		None
     };
@@ -93,6 +93,12 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 		if ( !pict_format ) {
 			continue;
 		}
+
+		int samp_buf, samples;
+		glXGetFBConfigAttrib( mDisplay, fbconfigs[i], GLX_SAMPLE_BUFFERS, &samp_buf );
+		glXGetFBConfigAttrib( mDisplay, fbconfigs[i], GLX_SAMPLES, &samples );
+		
+		printf( "Matching fbconfig %d, visual ID 0x%2x: SAMPLE_BUFFERS = %d SAMPLES = %d\n", i, visual->visualid, samp_buf, samples );
 
 		mFBConfig = fbconfigs[i];
 		mVisualInfo = visual;

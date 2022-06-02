@@ -74,7 +74,7 @@ protected:
 	MirrorBuffer mVertexBuffer;
 	std::map< Image*, std::pair< uint32_t, VkDescriptorImageInfo > > mImageInfos;
 	bool mDescriptorsChanged;
-	VkFence mSingleDrawsFence;
+	std::map< VulkanFramebuffer*, VkFence > mSingleDrawsFences;
 };
 
 } // namespace GE

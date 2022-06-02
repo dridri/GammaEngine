@@ -79,13 +79,14 @@ OpenGLES20Window::OpenGLES20Window( Instance* instance, const std::string& title
 		#elif defined(GE_EGL)
 		#elif defined(GE_LINUX)
 			mEGLContext = glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, 0, true );
-			glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>(mEGLContext) );
+			int ctxerr = glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>(mEGLContext) );
 		#elif defined(GE_ANDROID)
 		#elif defined(GE_IOS)
 
 		#endif
 	#endif
 
+		gDebug() << "EGL Context : " << mEGLContext << "\n";
 		gDebug() << "OpenGL version : " << glGetString( GL_VERSION ) << "\n";
 
 		glViewport( 0, 0, mWidth, mHeight );
@@ -95,7 +96,6 @@ OpenGLES20Window::OpenGLES20Window( Instance* instance, const std::string& title
 		glEnable( GL_DEPTH_TEST );
 		glEnable( GL_BLEND );
 		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-
 	}
 	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Front
 	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Back

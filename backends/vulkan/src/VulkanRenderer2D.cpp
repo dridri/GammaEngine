@@ -17,6 +17,11 @@
  *
  */
 
+/* TODO
+	append all draw calls into a single command-list, then Enqueue it just before SwapBuffers (maybe register any Renderer2D to their Framebuffers) (+add an explicit Flush function)
+ */
+
+#include <unistd.h>
 #include <fstream>
 #include <vector>
 
@@ -59,14 +64,6 @@ VulkanRenderer2D::VulkanRenderer2D( Instance* instance, uint32_t width, uint32_t
 
 	// TODO : load binary default shader then compute
 // 	Compute();
-
-
-	VkFenceCreateInfo fenceInfo = {};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-	if ( vkCreateFence( mInstance->device(), &fenceInfo, nullptr, &mSingleDrawsFence ) != VK_SUCCESS ) {
-		throw std::runtime_error("failed to create fence object for a frame!");
-	}
 }
 
 
@@ -131,20 +128,26 @@ void VulkanRenderer2D::Compute()
 {
 	createPipeline( 512, true );
 
-	mVertexBuffer.size = 128 * mVertexDefinition.size();
+	mVertexBuffer.size = 96 * mVertexDefinition.size();
+	gDebug() << mVertexBuffer.size;
 	mInstance->CreateBuffer( mVertexBuffer.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mVertexBuffer.device.buffer, &mVertexBuffer.device.memory );
 	mInstance->CreateBuffer( mVertexBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &mVertexBuffer.host.buffer, &mVertexBuffer.host.memory );
-
-	void* data;
+/*
 	vkMapMemory( mInstance->device(), mUniformsBuffer.host.memory, 0, mUniformsBuffer.size, 0, &data );
 	memcpy( &((float*)data)[0], mMatrixProjection->data(), sizeof(float) * 16 );
 	memcpy( &((float*)data)[16], mMatrixView->data(), sizeof(float) * 16 );
 	vkUnmapMemory( mInstance->device(), mUniformsBuffer.host.memory );
+*/
+	memcpy( &((float*)mUniformsBuffer.host.mapped)[0], mMatrixProjection->data(), sizeof(float) * 16 );
+	memcpy( &((float*)mUniformsBuffer.host.mapped)[16], mMatrixView->data(), sizeof(float) * 16 );
+
 	mInstance->CopyBuffer( mUniformsBuffer.device.buffer, mUniformsBuffer.host.buffer, 0, mUniformsBuffer.size );
 
 	mIndirectBuffer.size = sizeof(VkDrawIndirectCommand);
-	mInstance->CreateBuffer( mIndirectBuffer.size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mIndirectBuffer.device.buffer, &mIndirectBuffer.device.memory );
+	mInstance->CreateBuffer( mIndirectBuffer.size, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mIndirectBuffer.device.buffer, &mIndirectBuffer.device.memory );
 	mInstance->CreateBuffer( mIndirectBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &mIndirectBuffer.host.buffer, &mIndirectBuffer.host.memory );
+
+	vkMapMemory( mInstance->device(), mIndirectBuffer.host.memory, 0, mIndirectBuffer.size, 0, &mIndirectBuffer.host.mapped );
 
 	m2DReady = true;
 }
@@ -153,16 +156,18 @@ void VulkanRenderer2D::Compute()
 void VulkanRenderer2D::Prerender( GE::Image* image )
 {
 	if ( !m2DReady ) {
+		VulkanFramebuffer* currentFramebuffer = mInstance->boundFramebuffer(Thread::currentThread());
+// 		currentFramebuffer->waitFence();
 		Compute();
 	}
+
 	if ( mAssociatedWindow != nullptr && ( mAssociatedWindow->width() != mWidth || mAssociatedWindow->height() != mHeight ) ) {
 		mWidth = mAssociatedWindow->width();
 		mHeight = mAssociatedWindow->height();
 		mMatrixProjection->Orthogonal( 0.0, mWidth, mHeight, 0.0, -2049.0, 2049.0 );
+		memcpy( &((float*)mUniformsBuffer.host.mapped)[0], mMatrixProjection->data(), sizeof(float) * 16 );
+		mInstance->CopyBuffer( mUniformsBuffer.device.buffer, mUniformsBuffer.host.buffer, 0, mUniformsBuffer.size );
 	}
-
-	vkWaitForFences( mInstance->device(), 1, &mSingleDrawsFence, VK_TRUE, UINT64_MAX );
-	vkResetFences( mInstance->device(), 1, &mSingleDrawsFence );
 
 	VulkanTexture* tex = reinterpret_cast<VulkanTexture*>( image->serverReference( mInstance ) );
 	if ( mImageInfos.find( image ) == mImageInfos.end() ) {
@@ -201,7 +206,14 @@ void VulkanRenderer2D::Render( GE::Image* image, int mode, int start, int n, con
 	bool exists = ( mRenderCommandBuffers.count( currentFramebuffer ) > 0 );
 	bool changed = ( exists and ( currentFramebuffer->hash() != mFramebuffersHashes[currentFramebuffer] ) );
 
+	if ( mSingleDrawsFences.find(currentFramebuffer) != mSingleDrawsFences.end() ) {
+// 		vkWaitForFences( mInstance->device(), 1, &mSingleDrawsFences[currentFramebuffer], VK_TRUE, UINT64_MAX );
+// 		vkResetFences( mInstance->device(), 1, &mSingleDrawsFences[currentFramebuffer] );
+	}
+
 	if ( mDescriptorsChanged or exists == false or changed ) {
+		mDescriptorsChanged = false;
+		gDebug() << "Rebuild 2D commands list";
 		VkCommandBuffer commandBuffer;
 
 		if ( exists == false ) {
@@ -213,22 +225,28 @@ void VulkanRenderer2D::Render( GE::Image* image, int mode, int start, int n, con
 			if ( vkAllocateCommandBuffers( mInstance->device(), &allocInfo, &commandBuffer ) != VK_SUCCESS ) {
 				throw std::runtime_error("failed to allocate command buffers!");
 			}
+			VkFenceCreateInfo fenceInfo = {};
+			fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+// 			fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+			if ( vkCreateFence( mInstance->device(), &fenceInfo, nullptr, &mSingleDrawsFences[currentFramebuffer] ) != VK_SUCCESS ) {
+				throw std::runtime_error("failed to create fence object for a frame!");
+			}
 		} else {
 			commandBuffer = mRenderCommandBuffers[currentFramebuffer];
-			vkResetCommandBuffer( commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+// 			vkResetCommandBuffer( commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
 		}
 
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 		if ( vkBeginCommandBuffer( commandBuffer, &beginInfo ) != VK_SUCCESS ) {
 			throw std::runtime_error("failed to begin recording command buffer!");
 		}
 
 		VkBufferCopy copyRegion = {};
-		copyRegion.size = mIndirectBuffer.size;
 		copyRegion.srcOffset = 0;
 		copyRegion.dstOffset = 0;
+		copyRegion.size = mIndirectBuffer.size;
 		vkCmdCopyBuffer( commandBuffer, mIndirectBuffer.host.buffer, mIndirectBuffer.device.buffer, 1, &copyRegion );
 		copyRegion.size = mVertexBuffer.size;
 		vkCmdCopyBuffer( commandBuffer, mVertexBuffer.host.buffer, mVertexBuffer.device.buffer, 1, &copyRegion );
@@ -255,11 +273,13 @@ void VulkanRenderer2D::Render( GE::Image* image, int mode, int start, int n, con
 		mRenderCommandBuffers[currentFramebuffer] = commandBuffer;
 		mFramebuffersHashes[currentFramebuffer] = currentFramebuffer->hash();
 	}
-
+/*
 	void* data;
 	vkMapMemory( mInstance->device(), mIndirectBuffer.host.memory, 0, mIndirectBuffer.size, 0, &data );
 	((VkDrawIndirectCommand*)data)[0] = { (uint32_t)n, 1, 0, 0 };
 	vkUnmapMemory( mInstance->device(), mIndirectBuffer.host.memory );
+*/
+	((VkDrawIndirectCommand*)mIndirectBuffer.host.mapped)[0] = { (uint32_t)n, 1, 0, 0 };
 
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	VkSubmitInfo submitInfo = {};
@@ -273,7 +293,8 @@ void VulkanRenderer2D::Render( GE::Image* image, int mode, int start, int n, con
 */
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &mRenderCommandBuffers[currentFramebuffer];
-	if ( vkQueueSubmit( mInstance->graphicsQueue(), 1, &submitInfo, mSingleDrawsFence ) != VK_SUCCESS ) {
+// 	if ( vkQueueSubmit( mInstance->graphicsQueue(), 1, &submitInfo, mSingleDrawsFences[currentFramebuffer] ) != VK_SUCCESS ) {
+	if ( vkQueueSubmit( mInstance->graphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE ) != VK_SUCCESS ) {
 		std::cerr << "failed to submit draw command buffer" << std::endl;
 		exit(1);
 	}

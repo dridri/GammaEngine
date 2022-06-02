@@ -57,6 +57,16 @@ FbRenderer::~FbRenderer()
 }
 
 
+void FbRenderer::setVertexDefinition( const VertexDefinition& vertexDefinition )
+{
+}
+
+
+void FbRenderer::setBlendingMode( BlendingMode source, BlendingMode dest )
+{
+}
+
+
 Matrix* FbRenderer::projectionMatrix()
 {
 	return mMatrixProjection;
@@ -135,6 +145,21 @@ void FbRenderer::Compute()
 
 
 void FbRenderer::Draw()
+{
+}
+
+
+void FbRenderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount, uint32_t baseInstance )
+{
+}
+
+
+void FbRenderer::UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count )
+{
+}
+
+
+void FbRenderer::UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count )
 {
 }
 

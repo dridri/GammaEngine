@@ -1,4 +1,5 @@
 #include "VulkanDeferredRenderer.h"
+#include "VulkanFramebuffer.h"
 
 extern "C" GE::DeferredRenderer* CreateDeferredRenderer( GE::Instance* instance, uint32_t width, uint32_t height ) {
 	return new VulkanDeferredRenderer( static_cast<VulkanInstance*>(instance), width, height );

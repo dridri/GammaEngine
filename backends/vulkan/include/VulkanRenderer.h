@@ -67,6 +67,7 @@ public:
 
 	virtual void Compute();
 	virtual void Draw();
+	virtual void Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount = 1, uint32_t baseInstance = 0 );
 	virtual void Look( Camera* cam );
 
 	virtual Matrix* projectionMatrix();
@@ -79,6 +80,9 @@ public:
 	virtual void uniformUpload( const uintptr_t id, const Vector4f& v );
 	virtual void uniformUpload( const uintptr_t id, const Matrix& v );
 
+	virtual void UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count );
+	virtual void UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count );
+
 	void PrePopulateCommandBuffer( VkCommandBuffer buffer );
 	void PopulateCommandBuffer( VkCommandBuffer buffer );
 
@@ -87,6 +91,7 @@ protected:
 		struct {
 			VkDeviceMemory memory;
 			VkBuffer buffer;
+			void* mapped;
 		} host;
 		struct {
 			VkDeviceMemory memory;

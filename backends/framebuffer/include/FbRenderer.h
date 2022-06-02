@@ -61,15 +61,18 @@ public:
 	virtual int LoadFragmentShader( const std::string& file );
 	virtual int LoadFragmentShader( const void* data, size_t size );
 
+	virtual void setVertexDefinition( const VertexDefinition& vertexDefinition );
 	virtual void setRenderMode( const RenderMode& mode );
 	virtual void setDepthTestEnabled( bool en );
 	virtual void setBlendingEnabled( bool en );
+	virtual void setBlendingMode( BlendingMode source, BlendingMode dest );
 
 	virtual void AddObject( Object* obj );
 	virtual void AddLight( Light* light );
 
 	virtual void Compute();
 	virtual void Draw();
+	virtual void Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount = 1, uint32_t baseInstance = 0 );
 	virtual void Look( Camera* cam );
 
 	virtual Matrix* projectionMatrix();
@@ -81,6 +84,9 @@ public:
 	virtual void uniformUpload( const uintptr_t id, const Vector3f& v );
 	virtual void uniformUpload( const uintptr_t id, const Vector4f& v );
 	virtual void uniformUpload( const uintptr_t id, const Matrix& v );
+
+	virtual void UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count );
+	virtual void UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count );
 
 protected:
 	Instance* mInstance;

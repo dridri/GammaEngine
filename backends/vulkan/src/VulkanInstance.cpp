@@ -59,6 +59,7 @@ VulkanInstance::VulkanInstance( void* pBackend, const char* appName, uint32_t ap
 	std::vector< const char* > extensions;
 	extensions.push_back( "VK_KHR_surface" );
 	extensions.push_back( "VK_KHR_xlib_surface" );
+	extensions.push_back( "VK_KHR_get_physical_device_properties2" );
 	extensions.push_back( VK_EXT_DEBUG_UTILS_EXTENSION_NAME );
 	extensions.push_back( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
 
@@ -80,9 +81,9 @@ VulkanInstance::VulkanInstance( void* pBackend, const char* appName, uint32_t ap
 	inst_info.pApplicationInfo = &app_info;
 	inst_info.enabledExtensionCount = extensions.size();
 	inst_info.ppEnabledExtensionNames = extensions.data();
-	const char* layers[] = { "VK_LAYER_LUNARG_standard_validation" };
+	const char* layers[] = { "VK_LAYER_KHRONOS_validation" };
 	inst_info.ppEnabledLayerNames = layers;
-	inst_info.enabledLayerCount = 1;
+	inst_info.enabledLayerCount = sizeof(layers) / sizeof(char*);
 
 	VkResult res = vkCreateInstance( &inst_info, nullptr, &mInstance );
 	gDebug() << "vkCreateInstance => " << res;
@@ -130,7 +131,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanInstance::debugCallback( VkDebugUtilsMessag
 	}
 
 	if ( messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ) {
-		exit(0);
+		gDebug() << "Severity : " << messageSeverity;
+		__builtin_trap();
+		if ( messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ) {
+			exit(0);
+		}
 	}
 	return VK_FALSE;
 }
@@ -251,6 +256,14 @@ Instance* VulkanInstance::CreateDevice( int devid, int queueCount )
 		exit(0);
 	}
 
+	ret->mTransferQueueFamilyIndex = findQueueFamilyIndex( [this,devid,window]( uint32_t i, VkQueueFamilyProperties* prop ) {
+		return ( prop->queueFlags & VK_QUEUE_TRANSFER_BIT );
+	});
+	if ( ret->mTransferQueueFamilyIndex < 0 ) {
+		gDebug() << "ERROR : Cannot find transfer queue";
+		exit(0);
+	}
+
 	delete window;
 
 
@@ -264,6 +277,10 @@ Instance* VulkanInstance::CreateDevice( int devid, int queueCount )
 	queue_info.pQueuePriorities = &queue_priority;
 	queueCreateInfos.push_back( queue_info );
 
+	ret->mGraphicsQueueMutex = new std::mutex();
+	ret->mPresentationQueueMutex = ret->mGraphicsQueueMutex;
+	ret->mTransferQueueMutex = ret->mGraphicsQueueMutex;
+
 	if ( ret->mPresentationQueueFamilyIndex != ret->mGraphicsQueueFamilyIndex ) {
 		VkDeviceQueueCreateInfo queue_info2 = {};
 		queue_info2.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -271,6 +288,16 @@ Instance* VulkanInstance::CreateDevice( int devid, int queueCount )
 		queue_info2.queueCount = 1;
 		queue_info2.pQueuePriorities = &queue_priority;
 		queueCreateInfos.push_back( queue_info2 );
+		ret->mPresentationQueueMutex = new std::mutex();
+	}
+	if ( ret->mTransferQueueFamilyIndex != ret->mGraphicsQueueFamilyIndex ) {
+		VkDeviceQueueCreateInfo queue_info2 = {};
+		queue_info2.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queue_info2.queueFamilyIndex = ret->mTransferQueueFamilyIndex;
+		queue_info2.queueCount = 1;
+		queue_info2.pQueuePriorities = &queue_priority;
+		queueCreateInfos.push_back( queue_info2 );
+		ret->mTransferQueueMutex = new std::mutex();
 	}
 
 	const VkPhysicalDeviceFeatures features = {
@@ -278,6 +305,7 @@ Instance* VulkanInstance::CreateDevice( int devid, int queueCount )
 		.fillModeNonSolid = true,
 		.samplerAnisotropy = true,
 	};
+
 	const VkPhysicalDeviceDescriptorIndexingFeaturesEXT featuresEXT = {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT,
 		.runtimeDescriptorArray = true,
@@ -290,21 +318,30 @@ Instance* VulkanInstance::CreateDevice( int devid, int queueCount )
 	device_info.pQueueCreateInfos = queueCreateInfos.data();
 	const char* layers[] = { "VK_LAYER_LUNARG_standard_validation", "VK_LAYER_LUNARG_api_dump" };
 	device_info.ppEnabledLayerNames = layers;
-	device_info.enabledLayerCount = 2;
+	device_info.enabledLayerCount = sizeof(layers) / sizeof(char*);
 	device_info.pEnabledFeatures = &features;
-    std::vector<const char*> deviceExtensions = { "VK_KHR_swapchain" };
+    std::vector<const char*> deviceExtensions = { "VK_KHR_swapchain", "VK_EXT_descriptor_indexing", "VK_KHR_maintenance3" };
 	device_info.ppEnabledExtensionNames = deviceExtensions.data();
 	device_info.enabledExtensionCount = static_cast<uint32_t> (deviceExtensions.size());
+	gDebug() << device_info.enabledExtensionCount;
 
 	VkResult res = vkCreateDevice( ret->mGpus[devid], &device_info, nullptr, &ret->mDevices[devid] );
 	gDebug() << "vkCreateDevice => " << res;
 
 	vkGetDeviceQueue( ret->mDevices[ret->mDeviceId], ret->mGraphicsQueueFamilyIndex, 0, &ret->mGraphicsQueue );
 	vkGetDeviceQueue( ret->mDevices[ret->mDeviceId], ret->mPresentationQueueFamilyIndex, 0, &ret->mPresentationQueue );
+	vkGetDeviceQueue( ret->mDevices[ret->mDeviceId], ret->mTransferQueueFamilyIndex, 0, &ret->mTransferQueue );
 	gDebug() << "mGraphicsQueue => " << ret->mGraphicsQueue;
 	gDebug() << "mPresentationQueue => " << ret->mPresentationQueue;
+	gDebug() << "mTransferQueue => " << ret->mTransferQueue;
+	gDebug() << "mGraphicsQueueMutex => " << ret->mGraphicsQueueMutex;
+	gDebug() << "mPresentationQueueMutex => " << ret->mPresentationQueueMutex;
+	gDebug() << "mTransferQueueMutex => " << ret->mTransferQueueMutex;
 
 
+	VkFenceCreateInfo fenceInfo = {};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	vkCreateFence( ret->mDevices[ret->mDeviceId], &fenceInfo, nullptr, &ret->mTranferFence );
 
 
 	VkCommandPoolCreateInfo poolInfo = {};
@@ -314,6 +351,9 @@ Instance* VulkanInstance::CreateDevice( int devid, int queueCount )
 	if ( vkCreateCommandPool( ret->mDevices[ret->mDeviceId], &poolInfo, nullptr, &ret->mCommandPool ) != VK_SUCCESS ) {
 		throw std::runtime_error("failed to create command pool!");
 	}
+	gDebug() << "mCommandPool => " << ret->mCommandPool;
+	ret->mCommandPools = std::map< pthread_t, VkCommandPool >();
+	ret->mCommandPools[ pthread_self() ] = ret->mCommandPool;
 	gDebug() << "mCommandPool => " << ret->mCommandPool;
 
 
@@ -347,6 +387,51 @@ Instance* VulkanInstance::CreateDevice( int devid, int queueCount )
 
 	return ret;
 
+}
+
+
+VkCommandPool VulkanInstance::commandPool()
+{
+	if ( mCommandPools.find( pthread_self() ) == mCommandPools.end() ) {
+		VkCommandPool pool;
+		VkCommandPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		poolInfo.queueFamilyIndex = mGraphicsQueueFamilyIndex;
+		if ( vkCreateCommandPool( mDevices[mDeviceId], &poolInfo, nullptr, &pool ) != VK_SUCCESS ) {
+			throw std::runtime_error("failed to create command pool!");
+		}
+		gDebug() << "CommandPool for thread " << pthread_self() << " => " << pool;
+		mCommandPools[ pthread_self() ] = pool;
+	}
+	return mCommandPools[ pthread_self() ];
+}
+
+
+VkResult VulkanInstance::graphicsQueueSubmit( uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence )
+{
+	mGraphicsQueueMutex->lock();
+	VkResult ret = vkQueueSubmit( mGraphicsQueue, submitCount, pSubmits, fence );
+	mGraphicsQueueMutex->unlock();
+	return ret;
+}
+
+
+VkResult VulkanInstance::presentationQueueSubmit( uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence )
+{
+	mPresentationQueueMutex->lock();
+	VkResult ret = vkQueueSubmit( mPresentationQueue, submitCount, pSubmits, fence );
+	mPresentationQueueMutex->unlock();
+	return ret;
+}
+
+
+VkResult VulkanInstance::transferQueueSubmit( uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence )
+{
+	mTransferQueueMutex->lock();
+	VkResult ret = vkQueueSubmit( mTransferQueue, submitCount, pSubmits, fence );
+	mTransferQueueMutex->unlock();
+	return ret;
 }
 
 
@@ -462,8 +547,12 @@ VkResult VulkanInstance::CopyBuffer( VkBuffer dstBuffer, VkBuffer srcBuffer, VkD
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
-	vkQueueSubmit( mGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE );
-	vkQueueWaitIdle( mGraphicsQueue );
+	mTransferQueueMutex->lock();
+	vkQueueSubmit( mTransferQueue, 1, &submitInfo, mTranferFence );
+// 	vkQueueWaitIdle( mTransferQueue );
+	vkWaitForFences( mDevices[mDeviceId], 1, &mTranferFence, VK_TRUE, UINT64_MAX );
+	vkResetFences( mDevices[mDeviceId], 1, &mTranferFence );
+	mTransferQueueMutex->unlock();
 	vkFreeCommandBuffers( mDevices[mDeviceId], mCommandPool, 1, &commandBuffer );
 	return VK_SUCCESS;
 }
@@ -502,8 +591,12 @@ VkResult VulkanInstance::CopyBufferToImage( VkImage image, VkBuffer buffer, uint
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
-	vkQueueSubmit( mGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE );
-	vkQueueWaitIdle( mGraphicsQueue );
+	mTransferQueueMutex->lock();
+	vkQueueSubmit( mTransferQueue, 1, &submitInfo, mTranferFence );
+// 	vkQueueWaitIdle( mTransferQueue );
+	vkWaitForFences( mDevices[mDeviceId], 1, &mTranferFence, VK_TRUE, UINT64_MAX );
+	vkResetFences( mDevices[mDeviceId], 1, &mTranferFence );
+	mTransferQueueMutex->unlock();
 	vkFreeCommandBuffers( mDevices[mDeviceId], mCommandPool, 1, &commandBuffer );
 	return VK_SUCCESS;
 }
@@ -581,8 +674,10 @@ void VulkanInstance::TransitionImageLayout( VkImage image, VkImageAspectFlags as
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
-	vkQueueSubmit( mGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE );
-	vkQueueWaitIdle( mGraphicsQueue );
+	vkQueueSubmit( mTransferQueue, 1, &submitInfo, mTranferFence );
+// 	vkQueueWaitIdle( mTransferQueue );
+	vkWaitForFences( mDevices[mDeviceId], 1, &mTranferFence, VK_TRUE, UINT64_MAX );
+	vkResetFences( mDevices[mDeviceId], 1, &mTranferFence );
 
 	vkFreeCommandBuffers( mDevices[mDeviceId], mCommandPool, 1, &commandBuffer );
 }

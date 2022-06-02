@@ -28,12 +28,13 @@ void main() {
 	}
 
 	vec3 norm = normalize( ge_Normal );
+/*
 	if ( ge_TextureFlags >> 1 == 1 ) {
 		vec3 TextureNormal_tangentspace = normalize( texture( ge_Textures[ge_TextureBase + 1], ge_TextureCoord.xy ).rgb * 2.0 - 1.0 );
 // 		norm *= TextureNormal_tangentspace;
 		ge_FragColor.rgb = TextureNormal_tangentspace;
 	}
-
+*/
 	vec3 lightDir = normalize( vec3( 3, 0, 10 ) - ge_Position );
 	vec3 light = vec3(0.125) + max( dot( norm, lightDir ), 0.0 );
 	ge_FragColor.rgb *= light;

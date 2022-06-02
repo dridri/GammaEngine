@@ -27,6 +27,7 @@
 
 #include "VulkanInstance.h"
 #include "VulkanObject.h"
+#include "VulkanFramebuffer.h"
 #include "File.h"
 #include "Debug.h"
 #include "Image.h"

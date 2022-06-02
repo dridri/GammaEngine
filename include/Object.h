@@ -47,6 +47,7 @@ public:
 	const std::string& name() const;
 	uint32_t verticesCount() const;
 	uint32_t indicesCount() const;
+	uint32_t indicesRenderCount() const;
 	VertexBase* vertices() const;
 	uint32_t* indices() const;
 	Matrix* matrix( int instance = 0 ) const;
@@ -56,6 +57,8 @@ public:
 	void setName( const std::string& name );
 	void CreateInstances( int count );
 	void RemoveInstance( uint32_t idx );
+
+	void setIndicesRenderCount( uint32_t count );
 
 	virtual void setTexture( Instance* instance, int unit, Image* texture ) = 0;
 	virtual void ReuploadVertices( Renderer* renderer, uint32_t offset, uint32_t count ) = 0;
@@ -77,6 +80,7 @@ protected:
 	uint32_t mVerticesCount;
 	uint32_t* mIndices;
 	uint32_t mIndicesCount;
+	uint32_t mIndicesRenderCount;
 	Matrix* mMatrix;
 
 	std::vector< Matrix* > mMatrices;

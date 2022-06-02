@@ -150,15 +150,20 @@ int OpenGLES20Renderer::LoadVertexShader( const void* data, size_t size )
 	}
 	mVertexShader = glCreateShader( GL_VERTEX_SHADER );
 
-#ifdef GE_IOS
-	char* fulldata = (char*)malloc( strlen((char*)data) + strlen(vertex_shader_include) + 2 );
-	sprintf( fulldata, "%s%s", vertex_shader_include, (char*)data );
-	glShaderSource( mVertexShader, 1, (const char**)&fulldata, NULL );
-	free( fulldata );
-#else
-	const char* array[] = { vertex_shader_include, (char*)data };
-	glShaderSource( mVertexShader, sizeof(array)/sizeof(char*), array, NULL );
-#endif
+	if ( strncmp( (char*)data, "#version", 8 ) == 0 ) {
+		const char* array[] = { (char*)data };
+		glShaderSource( mVertexShader, 1, array, NULL );
+	} else {
+	#ifdef GE_IOS
+		char* fulldata = (char*)malloc( strlen((char*)data) + strlen(vertex_shader_include) + 2 );
+		sprintf( fulldata, "%s%s", vertex_shader_include, (char*)data );
+		glShaderSource( mVertexShader, 1, (const char**)&fulldata, NULL );
+		free( fulldata );
+	#else
+		const char* array[] = { vertex_shader_include, (char*)data };
+		glShaderSource( mVertexShader, sizeof(array)/sizeof(char*), array, NULL );
+	#endif
+	}
 	glCompileShader( mVertexShader );
 	char log[4096] = "";
 	int logsize = 4096;
@@ -185,15 +190,20 @@ int OpenGLES20Renderer::LoadFragmentShader( const void* data, size_t size )
 
 	mFragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
 
-#ifdef GE_IOS
-	char* fulldata = (char*)malloc( strlen((char*)data) + strlen(fragment_shader_include) + 2 );
-	sprintf( fulldata, "%s%s", fragment_shader_include, (char*)data );
-	glShaderSource( mFragmentShader, 1, (const char**)&fulldata, NULL );
-	free( fulldata );
-#else
-	const char* array[] = { fragment_shader_include, (char*)data };
-	glShaderSource( mFragmentShader, sizeof(array)/sizeof(char*), array, NULL );
-#endif
+	if ( strncmp( (char*)data, "#version", 8 ) == 0 ) {
+		const char* array[] = { (char*)data };
+		glShaderSource( mFragmentShader, 1, array, NULL );
+	} else {
+	#ifdef GE_IOS
+		char* fulldata = (char*)malloc( strlen((char*)data) + strlen(fragment_shader_include) + 2 );
+		sprintf( fulldata, "%s%s", fragment_shader_include, (char*)data );
+		glShaderSource( mFragmentShader, 1, (const char**)&fulldata, NULL );
+		free( fulldata );
+	#else
+		const char* array[] = { fragment_shader_include, (char*)data };
+		glShaderSource( mFragmentShader, sizeof(array)/sizeof(char*), array, NULL );
+	#endif
+	}
 	glCompileShader( mFragmentShader );
 	char log[4096] = "";
 	int logsize = 4096;
@@ -545,11 +555,11 @@ void OpenGLES20Renderer::Draw()
 		}
 		glUniformMatrix4fv( mMatrixObjectID, 1, GL_FALSE, mObjects[i]->matrix()->data() );
 #ifdef DRAW_INSTANCED_AVAILABLE
-		glDrawElementsInstancedEXT( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ), mObjects[i]->instancesCount() );
+		glDrawElementsInstancedEXT( mRenderMode, mObjects[i]->indicesRenderCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ), mObjects[i]->instancesCount() );
 #else
 		for ( uint32_t j = 0; j < (uint32_t)mObjects[i]->instancesCount(); j++ ) {
 			glUniform1i( mIntInstanceID, j );
-			glDrawElements( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ) );
+			glDrawElements( mRenderMode, mObjects[i]->indicesRenderCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ) );
 		}
 #endif
 		iIndices += mObjects[i]->indicesCount();
@@ -561,7 +571,7 @@ void OpenGLES20Renderer::Draw()
 }
 
 
-void OpenGLES20Renderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount, uint32_t baseInstance )
+void OpenGLES20Renderer::Draw( uint32_t indicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount, uint32_t baseInstance )
 {
 	if ( s2DActive ) {
 		glEnable( GL_DEPTH_TEST );
@@ -587,6 +597,7 @@ void OpenGLES20Renderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, u
 	glUniform1f( mFloatTimeID, Time::GetSeconds() );
 	glUniformMatrix4fv( mMatrixProjectionID, 1, GL_FALSE, mMatrixProjection->data() );
 	glUniformMatrix4fv( mMatrixViewID, 1, GL_FALSE, mMatrixView->data() );
+
 /*
 	glEnableVertexAttribArray( mVertexTexcoordID );
 	glVertexAttribPointer( mVertexTexcoordID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( 0 ) );
@@ -596,6 +607,7 @@ void OpenGLES20Renderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, u
 	glVertexAttribPointer( mVertexNormalID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 ) );
 	glEnableVertexAttribArray( mVertexPositionID );
 	glVertexAttribPointer( mVertexPositionID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 + sizeof( float ) * 4 ) );
+
 */
 // 	if ( mVertexDefinition.hash() != mLastVertexDefinitionHash ) {
 		for ( const VertexDefinition::Attribute& attrib : mVertexDefinition.attributes() ) {
@@ -619,23 +631,23 @@ void OpenGLES20Renderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, u
 // 	}
 
 	if ( indicesCount > 0 ) {
-#ifdef DRAW_INSTANCED_AVAILABLE
-		glDrawElementsInstancedEXT( mRenderMode, indicesCount, GL_UNSIGNED_INT, (void*)(uint64_t)( inddicesOffset * sizeof(uint32_t) ), instanceCount );
-#else
+// #ifdef DRAW_INSTANCED_AVAILABLE
+// 		glDrawElementsInstancedEXT( mRenderMode, indicesCount, GL_UNSIGNED_INT, (void*)(uint64_t)( indicesOffset * sizeof(uint32_t) ), instanceCount );
+// #else
 		for ( uint32_t j = 0; j < (uint32_t)instanceCount; j++ ) {
 			glUniform1i( mIntInstanceID, baseInstance + j );
-			glDrawElements( mRenderMode, indicesCount, GL_UNSIGNED_INT, (void*)(uint64_t)( inddicesOffset * sizeof(uint32_t) ) );
+			glDrawElements( mRenderMode, indicesCount, GL_UNSIGNED_INT, (void*)(uint64_t)( indicesOffset * sizeof(uint32_t) ) );
 		}
-#endif
+// #endif
 	} else {
-#ifdef DRAW_ARRAYS_BASE_INSTANCE_AVAILABLE
-		glDrawArraysInstancedBaseInstanceEXT( mRenderMode, verticesOffset, verticesCount, instanceCount, baseInstance );
-#else
+// #ifdef DRAW_ARRAYS_BASE_INSTANCE_AVAILABLE
+// 		glDrawArraysInstancedBaseInstanceEXT( mRenderMode, verticesOffset, verticesCount, instanceCount, baseInstance );
+// #else
 		for ( uint32_t j = 0; j < (uint32_t)instanceCount; j++ ) {
 			glUniform1i( mIntInstanceID, baseInstance + j );
 			glDrawArrays( mRenderMode, verticesOffset, verticesCount );
 		}
-#endif
+// #endif
 	}
 /*
 	uint32_t iIndices = 0;
@@ -656,6 +668,7 @@ void OpenGLES20Renderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, u
 		iIndices += mObjects[i]->indicesCount();
 	}
 */
+
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 	glUseProgram( 0 );

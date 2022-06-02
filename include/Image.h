@@ -41,8 +41,8 @@ public:
 		ImageNorm
 	} Type;
 	typedef enum {
-		Linear,
-		Nearest
+		Nearest,
+		Linear
 	} Filtering;
 
 	Image();
@@ -52,18 +52,19 @@ public:
 	~Image();
 
 	Type type() const;
-	Filtering filtering() const;
 	uint32_t width() const;
 	uint32_t height() const;
 	uint32_t* data() const;
 	uint32_t color() const;
+	Filtering filtering() const;
 	uint64_t serverReference( Instance* instance );
 
+	void UpdateHostData( Instance* instance = nullptr );
 	void UpdateData( Instance* instance = nullptr );
 
 	void setType( const Type& type );
-	void setFiltering( const Filtering& f );
 	void setColor( uint32_t c );
+	void setFiltering( Filtering f );
 	void Resize( uint32_t width, uint32_t height );
 	void Release();
 
@@ -73,11 +74,11 @@ protected:
 	void Load( File* file, const std::string& extension, Instance* instance );
 	Instance* mAllocInstance;
 	Type mType;
-	Filtering mFiltering;
 	uint32_t mWidth;
 	uint32_t mHeight;
 	uint32_t* mData;
 	uint32_t mColor;
+	Filtering mFiltering;
 
 	std::map< std::pair< Instance*, int >, uint64_t > mVkRefs;
 	std::map< Instance*, uint64_t > mServerRefs;

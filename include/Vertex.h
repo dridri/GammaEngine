@@ -21,6 +21,7 @@
 #define VERTEX_H
 
 #include <stdint.h>
+#include <stdio.h>
 #include <vector>
 #include "Vector.h"
 
@@ -44,19 +45,44 @@ public:
 
 	class Attribute {
 	public:
-		inline Attribute( int32_t attrib_id, uint32_t count, Type t, uint32_t stride, uint32_t ofs ) : attributeID( attrib_id ), count( count ), type( t ), stride( stride ), offset( ofs ) {}
+		inline Attribute( int32_t attrib_id, uint32_t count, Type t, uint32_t stride, uint32_t ofs, bool normalize = false ) : attributeID( attrib_id ), count( count ), type( t ), stride( stride ), offset( ofs ), normalize( normalize ) {}
 		int32_t attributeID;
 		uint32_t count;
 		Type type;
 		uint32_t stride;
 		uint32_t offset;
+		bool normalize;
 	};
 	
-	VertexDefinition( uint32_t sz ) : mSize( sz ) {}
+	VertexDefinition( uint32_t sz ) : mSize( sz ), mHash( 0 ) {
+		uint32_t polynomial = 0xEDB88320;
+		for ( uint32_t i = 0; i < 256; i++ ) {
+			uint32_t c = i;
+			for ( size_t j = 0; j < 8; j++ ) {
+				if (c & 1) {
+					c = polynomial ^ (c >> 1);
+				} else {
+					c >>= 1;
+				}
+			}
+			mHashTable[i] = c;
+		}
+	}
+	bool operator==( const VertexDefinition& other ) const {
+		return mHash == other.mHash;
+	};
 
-	inline void addAttribute( int32_t attrib_id, uint32_t count, Type t, uint32_t stride, uint32_t ofs ) {
-		Attribute attrib( attrib_id, count, t, stride, ofs );
+	inline void addAttribute( int32_t attrib_id, uint32_t count, Type t, uint32_t stride, uint32_t ofs, bool normalize = false ) {
+		Attribute attrib( attrib_id, count, t, stride, ofs, normalize );
 		mAttributes.emplace_back( attrib );
+
+		uint32_t buf[5] = { count, t, stride, ofs, normalize };
+
+		uint32_t c = mHash ^ 0xFFFFFFFF;
+		for (size_t i = 0; i < sizeof(buf); i++ ) {
+			c = mHashTable[(c ^ reinterpret_cast<const uint8_t*>(buf)[i]) & 0xFF] ^ (c >> 8);
+		}
+		mHash = c ^ 0xFFFFFFFF;
 	}
 
 	uint32_t size() {
@@ -67,9 +93,15 @@ public:
 		return mAttributes;
 	}
 
+	uint32_t hash() {
+		return mHash;
+	}
+
 protected:
 	uint32_t mSize;
 	std::vector< Attribute > mAttributes;
+	uint32_t mHashTable[256];
+	uint32_t mHash;
 };
 
 

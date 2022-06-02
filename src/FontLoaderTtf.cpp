@@ -19,6 +19,7 @@
 
 #include <cmath>
 #include "FontLoaderTtf.h"
+#include <freetype/ftmodapi.h>
 #include "File.h"
 #include "Image.h"
 #include "Instance.h"
@@ -103,7 +104,6 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 	int y = 0;
 	bool first_null_char = true;
 
-	int total_width = 0;
 	int advY = 0;
 	int advX = 0;
 	int count = 0;
@@ -113,25 +113,25 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 		FT_UInt glyph_index = FT_Get_Char_Index( face, n );
 		int error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
 		if ( error ) continue;
-		error = FT_Render_Glyph( slot, FT_RENDER_MODE_NORMAL );
-		if ( error ) continue;
+// 		error = FT_Render_Glyph( slot, FT_RENDER_MODE_NORMAL );
+// 		if ( error ) continue;
 		if ( !glyph_index && !first_null_char ) {
 			continue;
 		}
 		advX = std::max( advX, std::max( (int)slot->advance.x >> 6, std::max( (int)slot->bitmap.width, (int)font->size() ) ) );
 		advY = std::max( advY, (int)slot->bitmap.rows );
-		total_width += advX;
 		first_null_char = false;
 	}
 
 //	int side = std::max( advX * 16, advY * 16 );
 //	Image* texture = font->reallocTexture( side, side );
-	int width = advX * 2 + std::sqrt( (double)( advX * advY * count ) );
-	int height = advY * 2 + std::sqrt( (double)( advX * advY * count ) );
+	int width = advX * 2 + std::sqrt( (double)( 1.5 * 1.5 * advX * advY * count ) );
+	int height = advY * 2 + std::sqrt( (double)( 1.5 * 1.5 * advX * advY * count ) );
 	Image* texture = font->reallocTexture( width, height );
 // 	Image* texture = font->reallocTexture( advX * 16, advY * 16 );
 
 	first_null_char = true;
+	x = advX / 2;
 	y = advY;
 
 	for ( std::map< wchar_t, Font::Glyph >::const_iterator it = glyphs.begin(); it != glyphs.end(); it++ ) {
@@ -143,6 +143,7 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 			font->glyph(n)->c = n;
 			continue;
 		}
+// 		error = FT_Render_Glyph( slot, FT_RENDER_MODE_SDF );
 		error = FT_Render_Glyph( slot, FT_RENDER_MODE_NORMAL );
 		if ( error ) {
 			memcpy( font->glyph(n), font->glyph(0), sizeof( Font::Glyph ) );
@@ -151,8 +152,8 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 		}
 
 		if ( (uint32_t)( x + advX ) > texture->width() ) {
-			x = 0;
-			y += advY;
+			x = advX / 2;
+			y += advY * 1.5;
 		}
 
 		font->glyph(n)->x = std::max( x, 0 );
@@ -170,7 +171,7 @@ void FontLoaderTtf::RenderGlyphs( Font* font )
 
 		fontPrintTextImpl2( &slot->bitmap, x + slot->bitmap_left, y - slot->bitmap_top, texture->data(), texture->width(), texture->height(), 0xFFFFFFFF, font->outlineColor() );
 
-		x += advX;
+		x += advX * 1.5;
 		first_null_char = false;
 	}
 }
@@ -199,16 +200,17 @@ void FontLoaderTtf::fontPrintTextImpl2( FT_Bitmap* bitmap, int xofs, int yofs, u
 			for ( x = 0; x < (int)bitmap->width and fbColumn < fbEnd; x++ ) {
 				if ( x + xofs < width && x + xofs >= 0 && y + yofs < height && y + yofs >= 0 ) {
 					uint8_t val = *column;
-					if ( val >= 0x7F ) {
+// 					if ( val >= 0x7F ) {
 						switch ( buf_bpp ) {
 							case 16 :
 								*((uint16_t*)fbColumn) = color16;
 								break;
 							default :
-								*((uint32_t*)fbColumn) = ( val << 24 ) | ( color & 0x00FFFFFF );
+// 								*((uint32_t*)fbColumn) = ( val << 24 ) | ( color & 0x00FFFFFF );
+								*((uint32_t*)fbColumn) = ( val << 24 ) | ( val << 16 ) | ( val << 8 ) | ( val << 0 );
 								break;
 						}
-					}
+// 					}
 				}
 				column++;
 				fbColumn += bpp_step;

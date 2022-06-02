@@ -58,6 +58,8 @@ public:
 	uint64_t Write( const void* buf, uint64_t len );
 	uint64_t Write( const std::string& s );
 
+	static void setNativeAssetManager( void* man );
+
 
 private:
 	typedef enum {
@@ -77,6 +79,7 @@ private:
 #ifdef GE_ANDROID
 	bool mIsAsset;
 #endif
+	static void* sAssetManager;
 };
 
 

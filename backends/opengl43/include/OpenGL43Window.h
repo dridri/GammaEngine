@@ -38,7 +38,7 @@ public:
 	OpenGL43Window( Instance* instance, const std::string& title, int width, int height, Flags flags = Nil );
 	~OpenGL43Window();
 
-	virtual void Clear( uint32_t color = 0xFF000000 );
+	virtual void Clear( uint32_t color = 0xFF000000, bool colorBuffer = true, bool depthBuffer = true );
 	virtual void BindTarget();
 	virtual void SwapBuffers();
 

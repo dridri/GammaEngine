@@ -526,6 +526,24 @@ void OpenGL43Renderer::Compute()
 }
 
 
+void OpenGL43Renderer::UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count )
+{
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mIBO );
+// 	glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, offset * sizeof(uint32_t), count * sizeof(uint32_t), data );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint32_t), data, GL_STATIC_DRAW );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+}
+
+
+void OpenGL43Renderer::UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count )
+{
+	glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+// 	glBufferSubData( GL_ARRAY_BUFFER, offset * mVertexDefinition.size(), count * mVertexDefinition.size(), data );
+	glBufferData( GL_ARRAY_BUFFER, count * mVertexDefinition.size(), data, GL_STATIC_DRAW );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+}
+
+
 void OpenGL43Renderer::Draw()
 {
 	const uint32_t binding_proj = 0;
@@ -583,6 +601,86 @@ void OpenGL43Renderer::Draw()
 
 	glBindVertexArray( 0 );
 	glBindBuffer( GL_DRAW_INDIRECT_BUFFER, 0 );
+	glUseProgram( 0 );
+
+}
+
+void OpenGL43Renderer::Draw( uint32_t indicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount, uint32_t baseInstance )
+{
+	const uint32_t binding_proj = 0;
+	const uint32_t binding_view = 1;
+	const uint32_t location_textures = 16;
+
+	if ( !mReady ) {
+		return;
+	}
+
+	glUseProgram( mShader );
+	glBindVertexArray( mVAO );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mIBO );
+	glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+
+	if ( mDepthTestEnabled ) {
+		glEnable( GL_DEPTH_TEST );
+	} else {
+		glDisable( GL_DEPTH_TEST );
+	}
+	if ( mBlendingEnabled ) {
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+	} else {
+		glDisable( GL_BLEND );
+	}
+
+	glBindBufferBase( GL_UNIFORM_BUFFER, binding_proj, mMatrixProjectionID );
+	glBindBufferBase( GL_UNIFORM_BUFFER, binding_view, mMatrixViewID );
+// 	glBindBufferBase( GL_UNIFORM_BUFFER, binding_textures, mTexturesID );
+	for ( uint32_t k = 0; k < mTexturesNames.size(); k++ ) {
+		glActiveTexture( GL_TEXTURE0 + k );
+		glBindTexture( GL_TEXTURE_2D, mTexturesNames.at(k) );
+		glUniform1i( location_textures + k, k );
+	}
+
+	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixProjectionID );
+	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixProjection->data() );
+
+	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixViewID );
+	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16, mMatrixView->data() );
+
+	glBindBuffer( GL_UNIFORM_BUFFER, mMatrixObjectID );
+	glBufferSubData( GL_UNIFORM_BUFFER, 0, sizeof(float) * 16 * mTotalObjectsInstances, mMatrixObjects );
+	glBindBuffer( GL_UNIFORM_BUFFER, 0 );
+
+	glUniform1f( mFloatTimeID, Time::GetSeconds() );
+
+	if ( indicesCount > 0 ) {
+		/*
+		DrawElementsIndirectCommand params = {
+			.count = indicesCount,
+			.instanceCount = instanceCount,
+			.firstIndex = indicesOffset,
+			.baseVertex = verticesOffset,
+			.baseInstance = baseInstance
+		};
+		glDrawElementsIndirect( mRenderMode, GL_UNSIGNED_INT, &params );
+		*/
+		glDrawElementsInstancedBaseVertexBaseInstance( mRenderMode, indicesCount, GL_UNSIGNED_INT, (void*)( indicesOffset * sizeof(uint32_t) ), instanceCount, verticesOffset, baseInstance );
+	} else {
+		/*
+		DrawArraysIndirectCommand params = {
+			.count = verticesCount,
+			.instanceCount = instanceCount,
+			.firstVertex = verticesOffset,
+			.baseInstance = baseInstance
+		};
+		glDrawArraysIndirect( mRenderMode, &params );
+		*/
+		glDrawArraysInstancedBaseInstance( mRenderMode, verticesOffset, verticesCount, instanceCount, baseInstance );
+	}
+
+	glBindVertexArray( 0 );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 	glUseProgram( 0 );
 
 }

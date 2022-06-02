@@ -33,6 +33,13 @@ std::fstream* _ge_iOSOpen( const char* file, std::ios_base::openmode mode );
 
 namespace GE {
 
+void* File::sAssetManager = nullptr;
+
+void File::setNativeAssetManager( void* man )
+{
+	sAssetManager = (void*)man;
+}
+
 
 File::File( std::string filename, MODE mode )
 	: mType( FILE )
@@ -55,11 +62,18 @@ File::File( std::string filename, MODE mode )
 	mIsAsset = false;
 	mStream = new std::fstream( filename, std_mode );
 	if ( !mStream->is_open() ) {
-		mStream = new std::fstream( std::string( BaseWindow::androidState()->activity->internalDataPath ) + "/" + filename, std_mode );
+// 		mStream = new std::fstream( std::string( BaseWindow::androidState()->activity->internalDataPath ) + "/" + filename, std_mode );
 	}
 	if ( !mStream->is_open() ) {
-		mStream = (std::fstream*)AAssetManager_open( BaseWindow::androidState()->activity->assetManager, filename.c_str(), AASSET_MODE_STREAMING );
-		mIsAsset = true;
+		if ( !sAssetManager ) {
+		#ifndef GE_QT
+			sAssetManager = BaseWindow::androidState()->activity->assetManager;
+		#endif
+		}
+		if ( sAssetManager ) {
+			mStream = (std::fstream*)AAssetManager_open( reinterpret_cast<AAssetManager*>(sAssetManager), filename.c_str(), AASSET_MODE_STREAMING );
+		}
+		mIsAsset = ( mStream != nullptr );
 	}
 #elif GE_IOS
 	mStream = new std::fstream( filename, std_mode );
@@ -97,11 +111,18 @@ File::File( File* side, std::string filename, File::MODE mode )
 	mIsAsset = false;
 	mStream = new std::fstream( filename, std_mode );
 	if ( !mStream->is_open() ) {
-		mStream = new std::fstream( std::string( BaseWindow::androidState()->activity->internalDataPath ) + "/" + filename, std_mode );
+// 		mStream = new std::fstream( std::string( BaseWindow::androidState()->activity->internalDataPath ) + "/" + filename, std_mode );
 	}
 	if ( !mStream->is_open() ) {
-		mStream = (std::fstream*)AAssetManager_open( BaseWindow::androidState()->activity->assetManager, filename.c_str(), AASSET_MODE_STREAMING );
-		mIsAsset = true;
+		if ( !sAssetManager ) {
+		#ifndef GE_QT
+			sAssetManager = BaseWindow::androidState()->activity->assetManager;
+		#endif
+		}
+		if ( sAssetManager ) {
+			mStream = (std::fstream*)AAssetManager_open( reinterpret_cast<AAssetManager*>(sAssetManager), filename.c_str(), AASSET_MODE_STREAMING );
+		}
+		mIsAsset = ( mStream != nullptr );
 	}
 #elif GE_IOS
 	mStream = new std::fstream( filename, std_mode );
@@ -158,10 +179,17 @@ File::File( const File* other )
 		mIsAsset = false;
 		mStream = new std::fstream( mPath, std_mode );
 		if ( !mStream->is_open() ) {
-			mStream = new std::fstream( std::string( BaseWindow::androidState()->activity->internalDataPath ) + "/" + mPath, std_mode );
+// 			mStream = new std::fstream( std::string( BaseWindow::androidState()->activity->internalDataPath ) + "/" + mPath, std_mode );
 		}
 		if ( !mStream->is_open() ) {
-			mStream = (std::fstream*)AAssetManager_open( BaseWindow::androidState()->activity->assetManager, mPath.c_str(), AASSET_MODE_STREAMING );
+			if ( !sAssetManager ) {
+			#ifndef GE_QT
+				sAssetManager = BaseWindow::androidState()->activity->assetManager;
+			#endif
+			}
+			if ( sAssetManager ) {
+				mStream = (std::fstream*)AAssetManager_open( reinterpret_cast<AAssetManager*>(sAssetManager), mPath.c_str(), AASSET_MODE_STREAMING );
+			}
 			mIsAsset = ( mStream != nullptr );
 		}
 	#elif GE_IOS
@@ -264,6 +292,7 @@ uint64_t File::Seek( int64_t ofs, DIR dir )
 #ifdef GE_ANDROID
 		if ( mIsAsset ) {
 			return AAsset_seek( (AAsset*)mStream, 0, 1 );
+			return 0;
 		}
 #endif
 	return mStream->tellg();

@@ -35,11 +35,12 @@ public:
 		Resizable = 1,
 		Fullscreen = 2,
 		Hidden = 4,
+		NoContext = 8,
 	} Flags;
 	ProxyWindow( Instance* instance, const std::string& title, int width, int height, ProxyWindow::Flags flags = Nil ) : T( instance, title, width, height, (uint32_t)flags ) {}
 	virtual ~ProxyWindow(){};
 
-	virtual void Clear( uint32_t color = 0xFF000000 ) = 0;
+	virtual void Clear( uint32_t color = 0xFF000000, bool colorBuffer = true, bool depthBuffer = true ) = 0;
 	virtual void BindTarget() = 0;
 	virtual void SwapBuffers() = 0;
 

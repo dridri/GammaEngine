@@ -78,8 +78,8 @@ BaseWindow::BaseWindow( Instance* instance, const std::string& title, int width,
 		GLX_BLUE_SIZE, 8,
 		GLX_ALPHA_SIZE, 8,
 		GLX_DEPTH_SIZE, 24,
-		GLX_SAMPLE_BUFFERS, 1,
-		GLX_SAMPLES, 4,
+// 		GLX_SAMPLE_BUFFERS, 1,
+// 		GLX_SAMPLES, 4,
 		None
     };
 	fbconfigs = glXChooseFBConfig(mDisplay, mScreen, VisData, &numfbconfigs);

@@ -181,11 +181,11 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 	std::string backend_lib = "opengl43";
 #endif
 	std::string prefixes[11] = {
-		"./backend_",
-		"./backends/",
-		"./build/backend_",
-		"./gammaengine/backend_",
-		"./gammaengine/backends/",
+		"backend_",
+		"backends/",
+		"build/backend_",
+		"gammaengine/backend_",
+		"gammaengine/backends/",
 		"/usr/local/lib/backend_",
 		"/usr/local/lib/gammaengine/backend_",
 		"/usr/local/lib/gammaengine/backends/",
@@ -205,14 +205,12 @@ Instance* Instance::Create( const char* appName, uint32_t appVersion, bool easy_
 #else
 			gDebug() << "Backend ( " << backend_lib << " ) loading error : " << LibError() << "\n";
 #endif
-		} else {
-			break;
 		}
 	}
 	if ( local_backend == nullptr ) {
 		exit(0);
 	} else {
-		gDebug() << "Backend file " << prefixes[i] << backend_lib << lib_suffix << " loaded !\n";
+		gDebug() << "Backend file " << prefixes[--i] << backend_lib << lib_suffix << " loaded !\n";
 	}
 
 	typedef Instance* (*f_type)( void*, const char*, uint32_t );
@@ -291,7 +289,7 @@ Object* Instance::LoadObject( const std::string& filename )
 
 void Instance::Exit( int retcode )
 {
-#ifdef GE_ANDROID
+#if (defined(GE_ANDROID) && !defined(GE_QT))
 	BaseWindow::AndroidExit( retcode );
 #else
 	exit( retcode );

@@ -70,7 +70,9 @@ public:
 	virtual Instance* CreateDevice( int devid, int queueCount = 1 );
 	virtual uint64_t ReferenceImage( Image* image );
 	virtual void UnreferenceImage( uint64_t ref );
+	virtual void UpdateImageHostData( Image* image, uint64_t ref );
 	virtual void UpdateImageData( Image* image, uint64_t ref );
+	virtual void BindImage( Image* image );
 
 	void AffectVRAM( int64_t sz );
 

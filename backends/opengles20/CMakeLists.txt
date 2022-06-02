@@ -9,7 +9,7 @@ else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3")
 endif()
 
-if ( ${target} MATCHES "rpi" OR ${target} MATCHES "android" OR ${target} MATCHES "ios" )
+if ( ${target} MATCHES "rpi" OR ${target} MATCHES "android" OR ${target} MATCHES "ios" OR ${target} MATCHES "qt_android" OR ${target} MATCHES "qt_ios" )
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/opt/vc/lib")
 	set(OPENGL_LIBRARIES -lGLESv2)
 else()

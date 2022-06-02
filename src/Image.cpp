@@ -48,11 +48,11 @@ static uint32_t geGetNextPower2( uint32_t width )
 Image::Image()
 	: mAllocInstance( nullptr )
 	, mType( ImageColor )
-	, mFiltering( Linear )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
 	, mColor( 0xFFFFFFFF )
+	, mFiltering( Linear )
 {
 }
 
@@ -60,11 +60,11 @@ Image::Image()
 Image::Image( File* file, const std::string& extension, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
 	, mType( ImageColor )
-	, mFiltering( Linear )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
 	, mColor( 0xFFFFFFFF )
+	, mFiltering( Linear )
 {
 	mServerRefs.clear();
 	Load( file, extension, mAllocInstance );
@@ -74,11 +74,11 @@ Image::Image( File* file, const std::string& extension, Instance* instance )
 Image::Image( const std::string& filename, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
 	, mType( ImageColor )
-	, mFiltering( Linear )
 	, mWidth( 0 )
 	, mHeight( 0 )
 	, mData( nullptr )
 	, mColor( 0xFFFFFFFF )
+	, mFiltering( Linear )
 {
 	File* file = new File( filename, File::READ );
 	std::string extension = filename.substr( filename.rfind( "." ) + 1 );
@@ -93,11 +93,11 @@ Image::Image( const std::string& filename, Instance* instance )
 Image::Image( uint32_t width, uint32_t height, uint32_t backcolor, Instance* instance )
 	: mAllocInstance( instance ? instance : Instance::baseInstance() )
 	, mType( ImageColor )
-	, mFiltering( Linear )
 	, mWidth( width )
 	, mHeight( height )
 	, mData( nullptr )
 	, mColor( 0xFFFFFFFF )
+	, mFiltering( Linear )
 {
 	mServerRefs.clear();
 /*
@@ -203,12 +203,6 @@ Image::Type Image::type() const
 }
 
 
-Image::Filtering Image::filtering() const
-{
-	return mFiltering;
-}
-
-
 uint32_t Image::width() const
 {
 	return mWidth;
@@ -233,21 +227,27 @@ uint32_t Image::color() const
 }
 
 
+Image::Filtering Image::filtering() const
+{
+	return mFiltering;
+}
+
+
 void Image::setType( const Image::Type& type )
 {
 	mType = type;
 }
 
 
-void Image::setFiltering( const Filtering& f )
-{
-	mFiltering = f;
-}
-
-
 void Image::setColor( uint32_t c )
 {
 	mColor = c;
+}
+
+
+void Image::setFiltering( Image::Filtering f )
+{
+	mFiltering = f;
 }
 
 
@@ -299,6 +299,18 @@ void Image::Release()
 	}
 	mAllocInstance->Free( mData );
 	mData = nullptr;
+}
+
+
+void Image::UpdateHostData( Instance* instance )
+{
+	if ( instance == nullptr ) {
+		instance = Instance::baseInstance();
+	}
+
+	if ( mServerRefs.find( instance ) != mServerRefs.end() ) {
+		instance->UpdateImageHostData( this, mServerRefs[ instance ] );
+	}
 }
 
 

@@ -187,7 +187,7 @@ uint64_t OpenGL43Window::colorImage()
 }
 
 
-void OpenGL43Window::Clear( uint32_t color )
+void OpenGL43Window::Clear( uint32_t color , bool colorBuffer, bool depthBuffer )
 {
 	float clearColor[] = {
 		(float)( ( color >>  0 ) & 0xFF ) / 255.0f,

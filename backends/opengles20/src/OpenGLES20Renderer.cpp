@@ -36,6 +36,12 @@
 	#warning "GLES2 instancing NOT available !"
 #endif
 
+#if ( ( defined( GL_EXT_base_instance ) || defined( glDrawArraysInstancedBaseInstanceEXT ) ) && !defined( GE_ANDROID ) )
+	#define DRAW_ARRAYS_BASE_INSTANCE_AVAILABLE
+#else
+	#warning "GLES2 instancing NOT available !"
+#endif
+
 extern "C" GE::Renderer* CreateRenderer( GE::Instance* instance ) {
 	return new OpenGLES20Renderer( instance );
 }
@@ -97,12 +103,14 @@ static const char* fragment_shader_include =
 ;
 
 bool OpenGLES20Renderer::s2DActive = false;
+uint32_t OpenGLES20Renderer::mLastVertexDefinitionHash = 0;
 
 OpenGLES20Renderer::OpenGLES20Renderer( Instance* instance )
 	: mReady( false )
 	, mInstance( instance ? instance : Instance::baseInstance() )
 	, mMatrixObjects( 0 )
 	, mMatrixObjectsSize( 0 )
+	, mVertexDefinition( Vertex::vertexDefinition() )
 	, mRenderMode( GL_TRIANGLES )
 	, mDepthTestEnabled( false )
 	, mBlendingEnabled( false )
@@ -237,6 +245,7 @@ int OpenGLES20Renderer::LoadFragmentShader( const std::string& file )
 
 void OpenGLES20Renderer::setVertexDefinition( const VertexDefinition& vertexDefinition )
 {
+	mVertexDefinition = vertexDefinition;
 }
 
 
@@ -319,6 +328,11 @@ void OpenGLES20Renderer::createPipeline()
 	mVertexColorID = glGetAttribLocation( mShader, "ge_VertexColor" );
 	mVertexNormalID = glGetAttribLocation( mShader, "ge_VertexNormal" );
 	mVertexPositionID = glGetAttribLocation( mShader, "ge_VertexPosition" );
+	mVertexDefinition = VertexDefinition( sizeof(Vertex) );
+	mVertexDefinition.addAttribute( mVertexTexcoordID, 4, VertexDefinition::Float32, sizeof(Vertex), 0 );
+	mVertexDefinition.addAttribute( mVertexColorID, 4, VertexDefinition::Float32, sizeof(Vertex), sizeof( float ) * 4 );
+	mVertexDefinition.addAttribute( mVertexNormalID, 4, VertexDefinition::Float32, sizeof(Vertex), sizeof( float ) * 4 * 2 );
+	mVertexDefinition.addAttribute( mVertexPositionID, 4, VertexDefinition::Float32, sizeof(Vertex), sizeof( float ) * 4 * 3 );
 
 	char log[4096] = "";
 	int logsize = 4096;
@@ -333,6 +347,11 @@ void OpenGLES20Renderer::createPipeline()
 #if !( defined( DRAW_INSTANCED_AVAILABLE ) )
 	mIntInstanceID = glGetUniformLocation( mShader, "ge_InstanceID" );
 #endif
+
+// 	glEnableVertexAttribArray( mVertexTexcoordID );
+// 	glEnableVertexAttribArray( mVertexColorID );
+// 	glEnableVertexAttribArray( mVertexNormalID );
+// 	glEnableVertexAttribArray( mVertexPositionID );
 
 	mReady = true;
 }
@@ -368,18 +387,17 @@ void OpenGLES20Renderer::AddLight( Light* light )
 
 void OpenGLES20Renderer::VertexPoolAppend( VertexBase** pVertices, uint32_t& pVerticesPoolSize, uint32_t& pVerticesCount, VertexBase* append, uint32_t count )
 {
-	// TODO : use size of vertexDefinition instead of sizeof(Vertex)
 	if ( pVerticesCount + count > pVerticesPoolSize ) {
 		pVerticesPoolSize += ( ( count + 8192 ) / 8192 * 8192 );
-		VertexBase* vertices = (VertexBase*)mInstance->Malloc( sizeof(Vertex) * pVerticesPoolSize, false );
+		VertexBase* vertices = (VertexBase*)mInstance->Malloc( mVertexDefinition.size() * pVerticesPoolSize, false );
 		if ( *pVertices ) {
-			memcpy( vertices, *pVertices, sizeof(Vertex) * pVerticesCount );
+			memcpy( vertices, *pVertices, mVertexDefinition.size() * pVerticesCount );
 			mInstance->Free( *pVertices );
 		}
 		*pVertices = vertices;
 	}
 
-	memcpy( &((uint8_t*)*pVertices)[ sizeof(Vertex) * pVerticesCount ], append, sizeof(Vertex) * count );
+	memcpy( &((uint8_t*)*pVertices)[ mVertexDefinition.size() * pVerticesCount ], append, mVertexDefinition.size() * count );
 
 	pVerticesCount += count;
 }
@@ -431,7 +449,7 @@ void OpenGLES20Renderer::Compute()
 
 	glGenBuffers( 1, &mVBO );
 	glBindBuffer( GL_ARRAY_BUFFER, mVBO );
-	glBufferData( GL_ARRAY_BUFFER, verticesCount * sizeof(Vertex), vertices, GL_STATIC_DRAW );
+	glBufferData( GL_ARRAY_BUFFER, verticesCount * mVertexDefinition.size(), vertices, GL_STATIC_DRAW );
 	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(Vertex) * verticesCount );
 
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
@@ -442,12 +460,17 @@ void OpenGLES20Renderer::Compute()
 void OpenGLES20Renderer::UpdateVertexArray( VertexBase* data, uint32_t offset, uint32_t count )
 {
 	glBindBuffer( GL_ARRAY_BUFFER, mVBO );
-	glBufferSubData( GL_ARRAY_BUFFER, offset * sizeof(Vertex), count * sizeof(Vertex), &data[offset] ); //TODO : use size of vertexDefinition
+// 	glBufferSubData( GL_ARRAY_BUFFER, offset * sizeof(Vertex), count * sizeof(Vertex), &data[offset] ); //TODO : use size of vertexDefinition
+	glBufferData( GL_ARRAY_BUFFER, count * mVertexDefinition.size(), data, GL_STATIC_DRAW );
+	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(Vertex) * count );
 }
 
 
 void OpenGLES20Renderer::UpdateIndicesArray( uint32_t* data, uint32_t offset, uint32_t count )
 {
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mIBO );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint32_t), data, GL_STATIC_DRAW );
+	((OpenGLES20Instance*)Instance::baseInstance())->AffectVRAM( sizeof(uint32_t) * count );
 }
 
 
@@ -483,6 +506,7 @@ void OpenGLES20Renderer::Draw()
 	glUniformMatrix4fv( mMatrixProjectionID, 1, GL_FALSE, mMatrixProjection->data() );
 	glUniformMatrix4fv( mMatrixViewID, 1, GL_FALSE, mMatrixView->data() );
 
+/*
 	glEnableVertexAttribArray( mVertexTexcoordID );
 	glVertexAttribPointer( mVertexTexcoordID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( 0 ) );
 	glEnableVertexAttribArray( mVertexColorID );
@@ -491,6 +515,27 @@ void OpenGLES20Renderer::Draw()
 	glVertexAttribPointer( mVertexNormalID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 ) );
 	glEnableVertexAttribArray( mVertexPositionID );
 	glVertexAttribPointer( mVertexPositionID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 + sizeof( float ) * 4 ) );
+*/
+// 	if ( mVertexDefinition.hash() != mLastVertexDefinitionHash ) {
+		for ( const VertexDefinition::Attribute& attrib : mVertexDefinition.attributes() ) {
+			GLenum type = 0;
+			switch( attrib.type ) {
+				case VertexDefinition::UInt8 : { type = GL_UNSIGNED_BYTE; break; }
+				case VertexDefinition::Int8 : { type = GL_BYTE; break; }
+				case VertexDefinition::UInt16 : { type = GL_UNSIGNED_SHORT; break; }
+				case VertexDefinition::Int16 : { type = GL_SHORT; break; }
+				case VertexDefinition::UInt32 : { type = GL_UNSIGNED_INT; break; }
+				case VertexDefinition::Int32 : { type = GL_INT; break; }
+	// 			case VertexDefinition::Float16 : { type = GL_HALF_FLOAT; break; }
+				case VertexDefinition::Float32 : { type = GL_FLOAT; break; }
+	// 			case VertexDefinition::Float64 : { type = GL_DOUBLE; break; }
+				default: { gDebug() << "WARNING : Unsupported vertex attribute type " << attrib.type; break; }
+			}
+			glEnableVertexAttribArray( attrib.attributeID );
+			glVertexAttribPointer( attrib.attributeID, attrib.count, type, attrib.normalize ? GL_TRUE : GL_FALSE, attrib.stride, (void*)(uintptr_t)attrib.offset );
+		}
+		mLastVertexDefinitionHash = mVertexDefinition.hash();
+// 	}
 
 	uint32_t iIndices = 0;
 	for ( size_t i = 0; i < mObjects.size(); i++ ) {
@@ -518,6 +563,102 @@ void OpenGLES20Renderer::Draw()
 
 void OpenGLES20Renderer::Draw( uint32_t inddicesOffset, uint32_t indicesCount, uint32_t verticesOffset, uint32_t verticesCount, uint32_t instanceCount, uint32_t baseInstance )
 {
+	if ( s2DActive ) {
+		glEnable( GL_DEPTH_TEST );
+		s2DActive = false;
+	}
+
+	if ( mBlendingEnabled ) {
+		glEnable( GL_BLEND );
+		glBlendFunc( mBlendingSrc, mBlendingDst );
+	} else {
+		glDisable( GL_BLEND );
+	}
+	if ( mDepthTestEnabled ) {
+		glEnable( GL_DEPTH_TEST );
+	} else {
+		glDisable( GL_DEPTH_TEST );
+	}
+
+	glUseProgram( mShader );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mIBO );
+	glBindBuffer( GL_ARRAY_BUFFER, mVBO );
+
+	glUniform1f( mFloatTimeID, Time::GetSeconds() );
+	glUniformMatrix4fv( mMatrixProjectionID, 1, GL_FALSE, mMatrixProjection->data() );
+	glUniformMatrix4fv( mMatrixViewID, 1, GL_FALSE, mMatrixView->data() );
+/*
+	glEnableVertexAttribArray( mVertexTexcoordID );
+	glVertexAttribPointer( mVertexTexcoordID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( 0 ) );
+	glEnableVertexAttribArray( mVertexColorID );
+	glVertexAttribPointer( mVertexColorID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 ) );
+	glEnableVertexAttribArray( mVertexNormalID );
+	glVertexAttribPointer( mVertexNormalID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 ) );
+	glEnableVertexAttribArray( mVertexPositionID );
+	glVertexAttribPointer( mVertexPositionID, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)( sizeof( float ) * 4 + sizeof( float ) * 4 + sizeof( float ) * 4 ) );
+*/
+// 	if ( mVertexDefinition.hash() != mLastVertexDefinitionHash ) {
+		for ( const VertexDefinition::Attribute& attrib : mVertexDefinition.attributes() ) {
+			GLenum type = 0;
+			switch( attrib.type ) {
+				case VertexDefinition::UInt8 : { type = GL_UNSIGNED_BYTE; break; }
+				case VertexDefinition::Int8 : { type = GL_BYTE; break; }
+				case VertexDefinition::UInt16 : { type = GL_UNSIGNED_SHORT; break; }
+				case VertexDefinition::Int16 : { type = GL_SHORT; break; }
+				case VertexDefinition::UInt32 : { type = GL_UNSIGNED_INT; break; }
+				case VertexDefinition::Int32 : { type = GL_INT; break; }
+	// 			case VertexDefinition::Float16 : { type = GL_HALF_FLOAT; break; }
+				case VertexDefinition::Float32 : { type = GL_FLOAT; break; }
+	// 			case VertexDefinition::Float64 : { type = GL_DOUBLE; break; }
+				default: { gDebug() << "WARNING : Unsupported vertex attribute type " << attrib.type; break; }
+			}
+			glEnableVertexAttribArray( attrib.attributeID );
+			glVertexAttribPointer( attrib.attributeID, attrib.count, type, attrib.normalize ? GL_TRUE : GL_FALSE, attrib.stride, (void*)(uintptr_t)attrib.offset );
+		}
+		mLastVertexDefinitionHash = mVertexDefinition.hash();
+// 	}
+
+	if ( indicesCount > 0 ) {
+#ifdef DRAW_INSTANCED_AVAILABLE
+		glDrawElementsInstancedEXT( mRenderMode, indicesCount, GL_UNSIGNED_INT, (void*)(uint64_t)( inddicesOffset * sizeof(uint32_t) ), instanceCount );
+#else
+		for ( uint32_t j = 0; j < (uint32_t)instanceCount; j++ ) {
+			glUniform1i( mIntInstanceID, baseInstance + j );
+			glDrawElements( mRenderMode, indicesCount, GL_UNSIGNED_INT, (void*)(uint64_t)( inddicesOffset * sizeof(uint32_t) ) );
+		}
+#endif
+	} else {
+#ifdef DRAW_ARRAYS_BASE_INSTANCE_AVAILABLE
+		glDrawArraysInstancedBaseInstanceEXT( mRenderMode, verticesOffset, verticesCount, instanceCount, baseInstance );
+#else
+		for ( uint32_t j = 0; j < (uint32_t)instanceCount; j++ ) {
+			glUniform1i( mIntInstanceID, baseInstance + j );
+			glDrawArrays( mRenderMode, verticesOffset, verticesCount );
+		}
+#endif
+	}
+/*
+	uint32_t iIndices = 0;
+	for ( size_t i = 0; i < mObjects.size(); i++ ) {
+		const std::vector< std::pair< Image*, uint32_t > >* textures = dynamic_cast<OpenGLES20Object*>(mObjects[i])->textures( mInstance );
+		if ( textures and textures->size() > 0 ) {
+			glBindTexture( GL_TEXTURE_2D, textures->at(0).second );
+		}
+		glUniformMatrix4fv( mMatrixObjectID, 1, GL_FALSE, mObjects[i]->matrix()->data() );
+#ifdef DRAW_INSTANCED_AVAILABLE
+		glDrawElementsInstancedEXT( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ), mObjects[i]->instancesCount() );
+#else
+		for ( uint32_t j = 0; j < (uint32_t)mObjects[i]->instancesCount(); j++ ) {
+			glUniform1i( mIntInstanceID, j );
+			glDrawElements( mRenderMode, mObjects[i]->indicesCount(), GL_UNSIGNED_INT, (void*)(uint64_t)( iIndices * sizeof(uint32_t) ) );
+		}
+#endif
+		iIndices += mObjects[i]->indicesCount();
+	}
+*/
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	glUseProgram( 0 );
 }
 
 

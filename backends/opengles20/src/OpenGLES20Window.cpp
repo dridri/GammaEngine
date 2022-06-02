@@ -60,37 +60,43 @@ OpenGLES20Window::OpenGLES20Window( Instance* instance, const std::string& title
 	// TODO : MSAA
 	int nSamples = 1;
 
-#ifdef GE_WIN32
+	if ( flags & NoContext ) {
+		gDebug() << "OpenGL version : " << glGetString( GL_VERSION ) << "\n";
+	} else {
+	#ifndef GE_QT
+		#ifdef GE_WIN32
 
-	mEGLContext = wglCreateContext( GetDC( (HWND)mWindow ) );
-	wglMakeCurrent( GetDC( (HWND)mWindow ), (HGLRC)mEGLContext );
+			mEGLContext = wglCreateContext( GetDC( (HWND)mWindow ) );
+			wglMakeCurrent( GetDC( (HWND)mWindow ), (HGLRC)mEGLContext );
 
-	ShowWindow( (HWND)mWindow, SW_SHOWNORMAL );
+			ShowWindow( (HWND)mWindow, SW_SHOWNORMAL );
 
-	if ( !glext_loaded ) {
-		load_glext();
-		glext_loaded = true;
+			if ( !glext_loaded ) {
+				load_glext();
+				glext_loaded = true;
+			}
+
+		#elif defined(GE_EGL)
+		#elif defined(GE_LINUX)
+			mEGLContext = glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, 0, true );
+			glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>(mEGLContext) );
+		#elif defined(GE_ANDROID)
+		#elif defined(GE_IOS)
+
+		#endif
+	#endif
+
+		gDebug() << "OpenGL version : " << glGetString( GL_VERSION ) << "\n";
+
+		glViewport( 0, 0, mWidth, mHeight );
+		glEnable( GL_CULL_FACE );
+		glFrontFace( GL_CCW );
+		glCullFace( GL_BACK );
+		glEnable( GL_DEPTH_TEST );
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+
 	}
-
-#elif defined(GE_EGL)
-#elif defined(GE_LINUX)
-	mEGLContext = glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, 0, true );
-	glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>(mEGLContext) );
-#elif defined(GE_ANDROID)
-#elif defined(GE_IOS)
-
-#endif
-
-	gDebug() << "OpenGL version : " << glGetString( GL_VERSION ) << "\n";
-
-	glViewport( 0, 0, mWidth, mHeight );
-	glEnable( GL_CULL_FACE );
-	glFrontFace( GL_CCW );
-	glCullFace( GL_BACK );
-	glEnable( GL_DEPTH_TEST );
-	glEnable( GL_BLEND );
-	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-
 	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Front
 	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight ); // Back
 	((OpenGLES20Instance*)mInstance)->AffectVRAM( sizeof(uint32_t) * mWidth * mHeight / 2 ); // Depth
@@ -108,18 +114,20 @@ uint64_t OpenGLES20Window::colorImage()
 }
 
 
-void OpenGLES20Window::Clear( uint32_t color )
+void OpenGLES20Window::Clear( uint32_t color, bool colorBuffer, bool depthBuffer )
 {
 	BindTarget();
 
-	float clearColor[] = {
-		(float)( ( color >>  0 ) & 0xFF ) / 255.0f,
-		(float)( ( color >>  8 ) & 0xFF ) / 255.0f,
-		(float)( ( color >> 16 ) & 0xFF ) / 255.0f,
-		(float)( ( color >> 24 ) & 0xFF ) / 255.0f
-	};
-	glClearColor( clearColor[0], clearColor[1], clearColor[2], clearColor[3] );
-	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	if ( colorBuffer ) {
+		float clearColor[] = {
+			(float)( ( color >>  0 ) & 0xFF ) / 255.0f,
+			(float)( ( color >>  8 ) & 0xFF ) / 255.0f,
+			(float)( ( color >> 16 ) & 0xFF ) / 255.0f,
+			(float)( ( color >> 24 ) & 0xFF ) / 255.0f
+		};
+		glClearColor( clearColor[0], clearColor[1], clearColor[2], clearColor[3] );
+	}
+	glClear( ( colorBuffer ? GL_COLOR_BUFFER_BIT : 0 ) | ( depthBuffer ? GL_DEPTH_BUFFER_BIT : 0 ) );
 }
 
 
@@ -135,13 +143,15 @@ void OpenGLES20Window::BindTarget()
 
 void OpenGLES20Window::SwapBuffers()
 {
-#ifdef GE_WIN32
-	::SwapBuffers( GetDC( (HWND)mWindow ) );
-#elif defined(GE_EGL)
-#elif defined(GE_LINUX)
-	glXSwapBuffers( mDisplay, mWindow );
-#elif defined(GE_ANDROID)
-	glFinish();
+#ifndef GE_QT
+	#ifdef GE_WIN32
+		::SwapBuffers( GetDC( (HWND)mWindow ) );
+	#elif defined(GE_EGL)
+	#elif defined(GE_LINUX)
+		glXSwapBuffers( mDisplay, mWindow );
+	#elif defined(GE_ANDROID)
+		glFinish();
+	#endif
 #endif
 	SwapBuffersBase();
 
@@ -154,17 +164,21 @@ void OpenGLES20Window::SwapBuffers()
 
 uint64_t OpenGLES20Window::CreateSharedContext()
 {
-#ifdef GE_WIN32
-	return 0;
-#elif defined(GE_EGL)
-	return 0;
-#elif defined(GE_LINUX)
-	return (uint64_t)glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, (GLXContext)mEGLContext, true );
-#elif defined(GE_EGL)
-	return 0;
-#elif defined(GE_ANDROID)
-	return 0;
-#elif defined(GE_IOS)
+#ifndef GE_QT
+	#ifdef GE_WIN32
+		return 0;
+	#elif defined(GE_EGL)
+		return 0;
+	#elif defined(GE_LINUX)
+		return (uint64_t)glXCreateContext( mDisplay, (XVisualInfo*)mVisualInfo, (GLXContext)mEGLContext, true );
+	#elif defined(GE_EGL)
+		return 0;
+	#elif defined(GE_ANDROID)
+		return 0;
+	#elif defined(GE_IOS)
+		return 0;
+	#endif
+#else
 	return 0;
 #endif
 }
@@ -172,13 +186,15 @@ uint64_t OpenGLES20Window::CreateSharedContext()
 
 void OpenGLES20Window::BindSharedContext( uint64_t ctx )
 {
-#ifdef GE_WIN32
-#elif defined(GE_EGL)
-#elif defined(GE_LINUX)
-	int ret = glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>((void*)ctx) );
-	gDebug() << "glXMakeCurrent returned : " << ret << "\n";
-#elif defined(GE_ANDROID)
-#elif defined(GE_IOS)
+#ifndef GE_QT
+	#ifdef GE_WIN32
+	#elif defined(GE_EGL)
+	#elif defined(GE_LINUX)
+		int ret = glXMakeCurrent( mDisplay, mWindow, static_cast<GLXContext>((void*)ctx) );
+		gDebug() << "glXMakeCurrent returned : " << ret << "\n";
+	#elif defined(GE_ANDROID)
+	#elif defined(GE_IOS)
+	#endif
 #endif
 }
 

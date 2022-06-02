@@ -101,6 +101,7 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 			{ +0.5f, +0.5f, +0.5f },
 			{ -0.5f, +0.5f, +0.5f },
 		};
+/*
 		mFaces.emplace_back( Face( cube[0], cube[2], cube[1] ) );
 		mFaces.emplace_back( Face( cube[0], cube[3], cube[2] ) );
 		mFaces.emplace_back( Face( cube[1], cube[2], cube[6] ) );
@@ -115,6 +116,28 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 		mFaces.emplace_back( Face( cube[0], cube[5], cube[4] ) );
 		for ( int i = 0; i < tesslevel; i++ ) {
 			Tesselate( None );
+		}
+*/
+		int count = std::pow(2, tesslevel);
+		for ( int y = 0; y < count; y++ ) {
+			for ( int x = 0; x < count; x++ ) {
+				float x0 = -0.5f + (float)x / (float)count;
+				float y0 = -0.5f + (float)y / (float)count;
+				float x1 = -0.5f + (float)(x+1) / (float)count;
+				float y1 = -0.5f + (float)(y+1) / (float)count;
+				mFaces.emplace_back( Face( { x0, y0, -0.5f }, { x1, y1, -0.5f }, { x1, y0, -0.5f } ) );
+				mFaces.emplace_back( Face( { x0, y0, -0.5f }, { x0, y1, -0.5f }, { x1, y1, -0.5f } ) );
+				mFaces.emplace_back( Face( { x0, y0, +0.5f }, { x1, y0, +0.5f }, { x1, y1, +0.5f } ) );
+				mFaces.emplace_back( Face( { x0, y0, +0.5f }, { x1, y1, +0.5f }, { x0, y1, +0.5f } ) );
+				mFaces.emplace_back( Face( { x0, -0.5f, y0 }, { x1, -0.5f, y0 }, { x1, -0.5f, y1 } ) );
+				mFaces.emplace_back( Face( { x0, -0.5f, y0 }, { x1, -0.5f, y1 }, { x0, -0.5f, y1 } ) );
+				mFaces.emplace_back( Face( { x0, +0.5f, y0 }, { x1, +0.5f, y1 }, { x1, +0.5f, y0 } ) );
+				mFaces.emplace_back( Face( { x0, +0.5f, y0 }, { x0, +0.5f, y1 }, { x1, +0.5f, y1 } ) );
+				mFaces.emplace_back( Face( { -0.5f, x0, y0 }, { -0.5f, x1, y1 }, { -0.5f, x1, y0 } ) );
+				mFaces.emplace_back( Face( { -0.5f, x0, y0 }, { -0.5f, x0, y1 }, { -0.5f, x1, y1 } ) );
+				mFaces.emplace_back( Face( { +0.5f, x0, y0 }, { +0.5f, x1, y0 }, { +0.5f, x1, y1 } ) );
+				mFaces.emplace_back( Face( { +0.5f, x0, y0 }, { +0.5f, x1, y1 }, { +0.5f, x0, y1 } ) );
+			}
 		}
 	}
 
@@ -201,6 +224,12 @@ MeshBuilder::MeshBuilder( BaseType basetype, const Vector3f& size, int tesslevel
 
 MeshBuilder::~MeshBuilder()
 {
+}
+
+
+std::vector< MeshBuilder::Face >& MeshBuilder::faces()
+{
+	return mFaces;
 }
 
 

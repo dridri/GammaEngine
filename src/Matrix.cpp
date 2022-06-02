@@ -150,14 +150,14 @@ void Matrix::Orthogonal( float left, float right, float bottom, float top, float
 }
 
 
-void Matrix::LookAt( const Vector3f& eye, const Vector3f& center, const Vector3f& up )
+void Matrix::LookAt( const Vector3f& eye, const Vector3f& center, const Vector3f& up, bool centered )
 {
 	Matrix t;
 	Vector3f f;
 	Vector3f u;
 	Vector3f s;
 
-	f = center - eye;
+	f = centered ? ( center - eye ) : center;
 	f.normalize();
 
 	s = f ^ up;

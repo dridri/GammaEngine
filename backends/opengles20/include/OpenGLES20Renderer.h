@@ -104,6 +104,7 @@ protected:
 	std::vector< Object* > mObjects;
 	std::vector< Light* > mLights;
 	std::map< Object*, uint32_t > mObjectsVerticesStart;
+	VertexDefinition mVertexDefinition;
 
 	int mRenderMode;
 	bool mDepthTestEnabled;
@@ -128,6 +129,7 @@ protected:
 	int32_t mFloatTimeID;
 	int32_t mIntInstanceID;
 
+	static uint32_t mLastVertexDefinitionHash;
 	static bool s2DActive;
 };
 

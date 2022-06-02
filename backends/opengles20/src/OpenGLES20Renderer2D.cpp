@@ -206,6 +206,7 @@ void OpenGLES20Renderer2D::Render( Image* image, int mode, int start, int n, con
 		}
 
 		s2DActive = true;
+		mLastVertexDefinitionHash = 0;
 	}
 
 	glUniform1f( mFloatTimeID, Time::GetSeconds() );

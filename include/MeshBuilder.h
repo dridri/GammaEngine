@@ -55,6 +55,8 @@ public:
 	MeshBuilder( BaseType basetype, const Vector3f& size = Vector3f(1,1,1), int tesslevel = 0 );
 	~MeshBuilder();
 
+	std::vector< Face >& faces();
+
 	void Tesselate( TesselationMethod method );
 	void Translate( const Vector3f& vec );
 	void RemoveFaces( MeshBuilderRemoveCb cb, void* cbdata = nullptr );

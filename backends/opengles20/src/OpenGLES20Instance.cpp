@@ -159,6 +159,40 @@ void OpenGLES20Instance::UpdateImageData( Image* image, uint64_t ref )
 }
 
 
+void OpenGLES20Instance::UpdateImageHostData( Image* image, uint64_t ref )
+{
+	mImageReferencesMutex.lock();
+	if ( image and ref ) {
+		uint32_t glTextureID = (uint32_t)ref;
+		int textureWidth = geGetNextPower2( image->width() );
+		int textureHeight = geGetNextPower2( image->height() );
+		image->setMeta( "gles:width", textureWidth );
+		image->setMeta( "gles:height", textureHeight );
+		glBindTexture( GL_TEXTURE_2D, glTextureID );
+		if ( textureWidth != (int)image->width() or textureHeight != (int)image->height() ) {
+			// TODO
+		} else {
+			GLuint fbo;
+			glGenFramebuffers(1, &fbo); 
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ref, 0);
+			glReadPixels(0, 0, image->width(), image->height(), GL_RGBA, GL_UNSIGNED_BYTE, image->data());
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glDeleteFramebuffers(1, &fbo);
+		}
+		glBindTexture( GL_TEXTURE_2D, 0 );
+		glFlush();
+	}
+	mImageReferencesMutex.unlock();
+}
+
+
+void OpenGLES20Instance::BindImage( Image* image )
+{
+	glBindTexture( GL_TEXTURE_2D, image ? image->serverReference(this) : 0 );
+}
+
+
 void OpenGLES20Instance::AffectVRAM( int64_t sz )
 {
 	mGpuRamCounter += sz;

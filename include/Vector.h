@@ -22,7 +22,56 @@
 
 #include <cmath>
 
+#define __GE_VEC_OP( r, a, op, b ) \
+	r x = a x op b x; \
+	if ( n > 1 ) { \
+		r y = a y op b y; \
+		if ( n > 2 ) { \
+			r z = a z op b z; \
+			if ( n > 3 ) { \
+				r w = a w op b w; \
+			} \
+		} \
+	}
+
+#define __GE_VEC_IM( r, a, op, im ) \
+	r x = a x op im; \
+	if ( n > 1 ) { \
+		r y = a y op im; \
+		if ( n > 2 ) { \
+			r z = a z op im; \
+			if ( n > 3 ) { \
+				r w = a w op im; \
+			} \
+		} \
+	}
+	
+#define __GE_VEC_ADD( r, a, op, b ) \
+	r += a x op b x; \
+	if ( n > 1 ) { \
+		r += a y op b y; \
+		if ( n > 2 ) { \
+			r += a z op b z; \
+			if ( n > 3 ) { \
+				r += a w op b w; \
+			} \
+		} \
+	}
+
+#define __GE_VEC_ADD_IM( r, a, op, im ) \
+	r += a x op im; \
+	if ( n > 1 ) { \
+		r += a y op im; \
+		if ( n > 2 ) { \
+			r += a z op im; \
+			if ( n > 3 ) { \
+				r += a w op im; \
+			} \
+		} \
+	}
+
 namespace GE {
+
 
 template <typename T, int n> class Vector
 {
@@ -40,28 +89,98 @@ public:
 	Vector( const Vector<T,4>& v ) : x(v.x), y(v.y), z(v.z), w(v.w) {}
 	Vector( float* v ) : x(v[0]), y(v[1]), z(v[2]), w(v[3]) {}
 
-	Vector<T,n>& operator=( const Vector<T,n>& other );
+	template <typename F, int n2> static Vector<T,n> from( const Vector<F,n2>& v ) {
+		return Vector<T,n2>( v.x, v.y, v.z, v.w );
+	}
 
-	void normalize();
-	T length();
+	Vector<T,n>& operator=( const Vector<T,n>& other ) {
+		__GE_VEC_IM( this-> , other. , + , 0 );
+		return *this;
+	}
+
+	void normalize() {
+		T add = 0;
+		__GE_VEC_ADD( add, this-> , * , this-> );
+		T l = std::sqrt( add );
+		if ( l > 0.00001f ) {
+			T il = 1 / l;
+			__GE_VEC_IM( this-> , this-> , * , il );
+		}
+	}
+	Vector<T,n> normalized() {
+		T add = 0;
+		Vector<T,n> ret;
+		__GE_VEC_ADD( add, this-> , * , this-> );
+		T l = std::sqrt( add );
+		if ( l > 0.00001f ) {
+			T il = 1 / l;
+			__GE_VEC_IM( ret. , this-> , * , il );
+		}
+		return ret;
+	}
+	T length() {
+		T add = 0;
+		__GE_VEC_ADD( add, this-> , * , this-> );
+		return std::sqrt( add );
+	}
 	Vector<T,3> xyz() const { return Vector<T,3>( x, y, z ); }
 	Vector<T,3> zyx() const { return Vector<T,3>( z, y, x ); }
 	Vector<T,2> xy() const { return Vector<T,2>( x, y ); }
 	Vector<T,2> xz() const { return Vector<T,2>( x, z ); }
 	Vector<T,2> yz() const { return Vector<T,2>( y, z ); }
 
-	T operator[]( int i ) const;
-	T& operator[]( int i );
-	Vector<T,n> operator-() const;
- 	void operator+=( const Vector<T,n>& v );
- 	void operator-=( const Vector<T,n>& v );
-	void operator*=( T v );
+	T operator[]( int i ) const {
+		return ( &x )[i];
+	}
+	T& operator[]( int i ) {
+		return ( &x )[i];
+	}
+	Vector<T,n> operator-() const {
+		Vector<T, n> ret;
+		__GE_VEC_IM( ret. , - this-> , + , 0.0f );
+		return ret;
+	}
+ 	void operator+=( const Vector<T,n>& v ) {
+		__GE_VEC_OP( this-> , this-> , + , v. );
+	}
+ 	void operator-=( const Vector<T,n>& v ) {
+		__GE_VEC_OP( this-> , this-> , - , v. );
+	}
+	void operator*=( T v ) {
+		__GE_VEC_IM( this-> , this-> , * , v );
+	}
 
-	Vector<T,n> operator+( const Vector<T,n>& v ) const;
-	Vector<T,n> operator-( const Vector<T,n>& v ) const;
-	Vector<T,n> operator*( T im ) const;
-	T operator*( const Vector<T,n>& v ) const;
-	Vector<T,n> operator^( const Vector<T,n>& v ) const;
+	Vector<T,n> operator+( const Vector<T,n>& v ) const {
+		Vector<T, n> ret;
+		__GE_VEC_OP( ret. , this-> , + , v. );
+		return ret;
+	}
+	Vector<T,n> operator-( const Vector<T,n>& v ) const {
+		Vector<T, n> ret;
+		__GE_VEC_OP( ret. , this-> , - , v. );
+		return ret;
+	}
+	Vector<T,n> operator*( T im ) const {
+		Vector<T, n> ret;
+		__GE_VEC_IM( ret. , this-> , * , im );
+		return ret;
+	}
+	T operator*( const Vector<T,n>& v ) const {
+		T ret = 0;
+		__GE_VEC_ADD( ret, this-> , * , v. );
+		return ret;
+	}
+	Vector<T,n> operator^( const Vector<T,n>& v ) const {
+		Vector<T, n> ret;
+		for ( int i = 0; i < n; i++ ) { // TODO : direct op
+			T a = ( &x )[ ( i + 1 ) % n ];
+			T b = ( &v.x )[ ( i + 2 ) % n ];
+			T c = ( &x )[ ( i + 2 ) % n ];
+			T d = ( &v.x )[ ( i + 1 ) % n ];
+			( &ret.x )[i] = a * b - c * d;
+		}
+		return ret;
+	}
 
 public:
 	T x;
@@ -115,13 +234,5 @@ typedef Vector<double, 4> Vector4d;
 
 } // namespace GE
 
-#if ( (defined(GE_ANDROID) || defined(GE_IOS) || defined(GE_RELEASE) )/* && defined(GE_LIB)*/ )
-#define GE_VECTOR_CPP_INC
-#ifdef GE_LIB
-#include "../src/Vector.cpp"
-#else
-#include "Vector.cpp"
-#endif
-#endif
 
 #endif // VECTOR_H

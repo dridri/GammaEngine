@@ -112,7 +112,7 @@ try_raw: ;
 // 		check_fbp = true;
 	}
 
-	if ( check_fbp and fbp <= 0 ) {
+	if ( check_fbp and (intptr_t)fbp <= 0 ) {
 		gDebug() << "Unable to create memory mapping\n";
 		close( fbfd );
 		return -1;

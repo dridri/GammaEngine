@@ -102,6 +102,7 @@ void TEST()
 		}
 	}
 */
+
 	Renderer* render = instance->CreateRenderer();
 	render->LoadVertexShader( "shaders_vulkan/basic.vert.spv" );
 	render->LoadFragmentShader( "shaders_vulkan/basic.frag.spv" );
@@ -174,6 +175,7 @@ void TEST()
 		render2->Draw();
 // 		deferredRenderer->Look( camera );
 // 		deferredRenderer->Render();
+
 
 		renderer2d->DrawText( 0, font->size() * 0, font, 0xFFFFFFFF, " FPS : " + std::to_string( (int)fps ) );
 		renderer2d->DrawText( 0, font->size() * 1, font, 0xFFFFFFFF, " RAM : " + std::to_string( instance->cpuRamCounter() / 1024 ) );
